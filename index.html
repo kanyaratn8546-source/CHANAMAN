@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI × Canva Design Mastery</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --purple: #7c3aed; --purple-light: #a78bfa; --purple-dark: #4c1d95;
+  --teal: #06b6d4; --teal-light: #67e8f9;
+  --pink: #ec4899; --pink-light: #f9a8d4;
+  --green: #10b981; --green-light: #6ee7b7;
+  --blue: #3b82f6; --orange: #f59e0b;
+  --dark: #050511; --dark2: #0d0d1f; --dark3: #13132a;
+  --card: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.08);
+  --text: #f1f5f9; --muted: #94a3b8;
+  --slide-dur: 0.55s;
+}
+html { font-size: 16px; }
+body {
+  width: 100vw; height: 100vh; overflow: hidden;
+  font-family: 'Kanit', sans-serif;
+  background: var(--dark); color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ══════════════════════════════════════════
+   ANIMATED BACKGROUND
+══════════════════════════════════════════ */
+#bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.bg-mesh {
+  position: absolute; inset: -20%;
+  background:
+    radial-gradient(ellipse 70% 60% at 15% 20%, rgba(124,58,237,.22) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 70% at 85% 75%, rgba(6,182,212,.18) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(236,72,153,.1) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 10%, rgba(59,130,246,.12) 0%, transparent 50%);
+  animation: meshShift 18s ease-in-out infinite alternate;
+}
+@keyframes meshShift {
+  0%   { transform: scale(1) rotate(0deg); }
+  33%  { transform: scale(1.05) rotate(1deg) translate(1%,-1%); }
+  66%  { transform: scale(0.97) rotate(-1deg) translate(-1%,2%); }
+  100% { transform: scale(1.03) rotate(0.5deg) translate(2%,-0.5%); }
+}
+.bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 20%, transparent 85%);
+}
+.bg-noise {
+  position: absolute; inset: 0; opacity: .03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+.orb { position: absolute; border-radius: 50%; filter: blur(80px); pointer-events: none; }
+.orb-1 { width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(124,58,237,.3), transparent 70%); top: -15%; left: -10%; animation: orbDrift1 22s ease-in-out infinite; }
+.orb-2 { width: 40vw; height: 40vw; background: radial-gradient(circle, rgba(6,182,212,.22), transparent 70%); bottom: -10%; right: -5%; animation: orbDrift2 28s ease-in-out infinite; }
+.orb-3 { width: 30vw; height: 30vw; background: radial-gradient(circle, rgba(236,72,153,.18), transparent 70%); top: 40%; left: 50%; transform: translateX(-50%); animation: orbDrift3 16s ease-in-out infinite; }
+@keyframes orbDrift1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(4%,6%)} }
+@keyframes orbDrift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-5%,-4%)} }
+@keyframes orbDrift3 { 0%,100%{transform:translateX(-50%) scale(1)} 50%{transform:translateX(-44%) scale(1.12)} }
+
+/* Scan line effect */
+.bg-scan {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.04) 2px, rgba(0,0,0,.04) 4px);
+  animation: scanMove 8s linear infinite;
+}
+@keyframes scanMove { 0%{background-position:0 0} 100%{background-position:0 100px} }
+
+/* floating particles */
+.pt { position: absolute; border-radius: 50%; animation: ptRise linear infinite; opacity: 0; }
+@keyframes ptRise {
+  0%   { transform: translateY(100vh) scale(0) rotate(0deg); opacity: 0; }
+  5%   { opacity: .6; }
+  95%  { opacity: .3; }
+  100% { transform: translateY(-10vh) scale(1.5) rotate(180deg); opacity: 0; }
+}
+
+/* ══════════════════════════════════════════
+   ★ FIXED SLIDE SYSTEM — NO OVERLAP ★
+   Key fix: use visibility + z-index stack,
+   outgoing slide waits for full transition
+   before being hidden.
+══════════════════════════════════════════ */
+.stage {
+  position: fixed; inset: 0; z-index: 10;
+  overflow: hidden;
+  /* No perspective here — caused 3D stacking glitches */
+}
+
+.slide {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: clamp(8px,2vh,20px) clamp(10px,3vw,32px) clamp(52px,8vh,80px);
+  /* Default: hidden behind, NOT transitioning */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(60px) scale(0.97);
+  /* IMPORTANT: transition only opacity+transform; visibility instant */
+  transition:
+    opacity var(--slide-dur) cubic-bezier(.4,0,.2,1),
+    transform var(--slide-dur) cubic-bezier(.4,0,.2,1);
+  will-change: transform, opacity;
+  z-index: 1;
+}
+
+/* Active slide — on top, fully visible */
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: all;
+  transform: translateX(0) scale(1);
+  z-index: 3;
+  transition:
+    opacity var(--slide-dur) cubic-bezier(.4,0,.2,1),
+    transform var(--slide-dur) cubic-bezier(.4,0,.2,1);
+}
+
+/* Leaving slide — animates out, z-index BELOW incoming */
+.slide.leaving {
+  opacity: 0;
+  visibility: visible; /* keep visible during animation */
+  pointer-events: none;
+  transform: translateX(-60px) scale(0.97);
+  z-index: 2;
+  transition:
+    opacity var(--slide-dur) cubic-bezier(.4,0,.2,1),
+    transform var(--slide-dur) cubic-bezier(.4,0,.2,1);
+}
+
+/* ══════════════════════════════════════════
+   ENTRY ANIMATIONS (stagger on .active)
+══════════════════════════════════════════ */
+@keyframes popUp  { from{opacity:0;transform:translateY(28px) scale(.93)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+@keyframes scaleIn{ from{opacity:0;transform:scale(.82)} to{opacity:1;transform:scale(1)} }
+@keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+@keyframes borderGlow {
+  0%,100% { border-color: rgba(124,58,237,.4); box-shadow: 0 0 20px rgba(124,58,237,.15); }
+  50%      { border-color: rgba(6,182,212,.6);  box-shadow: 0 0 40px rgba(6,182,212,.25); }
+}
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+@keyframes spin   { to{transform:rotate(360deg)} }
+@keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* Stagger delays — only trigger when slide is .active */
+.slide.active .a1 { animation: popUp .6s cubic-bezier(.34,1.56,.64,1) .05s both; }
+.slide.active .a2 { animation: popUp .6s cubic-bezier(.34,1.56,.64,1) .15s both; }
+.slide.active .a3 { animation: popUp .6s cubic-bezier(.34,1.56,.64,1) .25s both; }
+.slide.active .a4 { animation: popUp .6s cubic-bezier(.34,1.56,.64,1) .35s both; }
+.slide.active .a5 { animation: popUp .6s cubic-bezier(.34,1.56,.64,1) .45s both; }
+.slide.active .a6 { animation: popUp .6s cubic-bezier(.34,1.56,.64,1) .55s both; }
+/* Reset anim when not active so it re-triggers */
+.slide:not(.active) .a1,
+.slide:not(.active) .a2,
+.slide:not(.active) .a3,
+.slide:not(.active) .a4,
+.slide:not(.active) .a5,
+.slide:not(.active) .a6 { animation: none; opacity: 0; }
+
+/* ══════════════════════════════════════════
+   PROGRESS BAR (new excitement feature)
+══════════════════════════════════════════ */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--purple), var(--pink));
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+  z-index: 9999;
+  box-shadow: 0 0 12px rgba(6,182,212,.6);
+}
+
+/* ══════════════════════════════════════════
+   TYPOGRAPHY
+══════════════════════════════════════════ */
+.disp { font-size: clamp(2rem,5vw,5.5rem); font-weight: 900; letter-spacing: -.03em; line-height: 1.02; }
+.h1   { font-size: clamp(1.6rem,3.5vw,4rem); font-weight: 800; letter-spacing: -.025em; line-height: 1.08; }
+.h2   { font-size: clamp(1.2rem,2.4vw,2.8rem); font-weight: 700; letter-spacing: -.02em; line-height: 1.12; }
+.h3   { font-size: clamp(.9rem,1.5vw,1.6rem); font-weight: 600; }
+.body { font-size: clamp(.75rem,1.1vw,1rem); line-height: 1.75; color: var(--muted); font-weight: 300; }
+.sm   { font-size: clamp(.6rem,.82vw,.8rem); }
+.label{ font-size: clamp(.5rem,.7vw,.65rem); font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+
+.grad-main   { background: linear-gradient(135deg, #22d3ee, #a855f7 50%, #ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.grad-green  { background: linear-gradient(135deg, #10b981, #06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.grad-blue   { background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.grad-orange { background: linear-gradient(135deg, #f59e0b, #ef4444); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+
+.shimmer-text {
+  background: linear-gradient(90deg, #22d3ee 0%, #a855f7 20%, #ec4899 40%, #22d3ee 60%, #a855f7 80%, #ec4899 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+/* ══════════════════════════════════════════
+   GLASS & CARDS
+══════════════════════════════════════════ */
+.glass {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: clamp(10px,1.5vw,20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 16px 50px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.1);
+}
+.glass-hover {
+  transition: all .3s cubic-bezier(.34,1.56,.64,1);
+  cursor: pointer;
+}
+.glass-hover:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: rgba(124,58,237,.5);
+  box-shadow: 0 28px 60px rgba(0,0,0,.32), 0 0 40px rgba(124,58,237,.12), inset 0 1px 0 rgba(255,255,255,.15);
+}
+.glow-border { animation: borderGlow 3s ease-in-out infinite; border: 1px solid; }
+
+/* ══════════════════════════════════════════
+   BADGES / PILLS
+══════════════════════════════════════════ */
+.badge {
+  display: inline-flex; align-items: center; gap: .35em;
+  padding: .28em .85em; border-radius: 100px;
+  font-size: clamp(.5rem,.7vw,.65rem); font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.b-teal   { background: rgba(6,182,212,.15);   color: #67e8f9; border: 1px solid rgba(6,182,212,.35); }
+.b-purple { background: rgba(124,58,237,.15);  color: #c4b5fd; border: 1px solid rgba(124,58,237,.35); }
+.b-green  { background: rgba(16,185,129,.15);  color: #6ee7b7; border: 1px solid rgba(16,185,129,.35); }
+.b-pink   { background: rgba(236,72,153,.15);  color: #f9a8d4; border: 1px solid rgba(236,72,153,.35); }
+.b-blue   { background: rgba(59,130,246,.15);  color: #93c5fd; border: 1px solid rgba(59,130,246,.35); }
+.b-orange { background: rgba(245,158,11,.15);  color: #fcd34d; border: 1px solid rgba(245,158,11,.35); }
+.b-white  { background: rgba(255,255,255,.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,.15); }
+
+/* ══ CLICK-HINT — bold beacon button ══ */
+.click-hint {
+  display: inline-flex; align-items: center; gap: .55em;
+  position: relative; overflow: hidden;
+  padding: .42em 1.1em .42em .75em;
+  border-radius: 100px;
+  font-size: clamp(.55rem,.72vw,.68rem);
+  font-weight: 700; letter-spacing: .06em;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(6,182,212,.9) 0%, rgba(124,58,237,.85) 100%);
+  border: 1.5px solid rgba(255,255,255,.25);
+  box-shadow:
+    0 0 0 3px rgba(6,182,212,.18),
+    0 4px 18px rgba(6,182,212,.35),
+    inset 0 1px 0 rgba(255,255,255,.2);
+  cursor: pointer;
+  user-select: none;
+  transition: all .25s cubic-bezier(.34,1.56,.64,1);
+  animation: hintFloat 3s ease-in-out infinite;
+}
+/* shimmer sweep */
+.click-hint::before {
+  content: '';
+  position: absolute; top: 0; left: -80%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+  animation: hintShimmer 2.8s ease-in-out infinite;
+  border-radius: inherit;
+}
+/* outer glow ring */
+.click-hint::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 100px;
+  border: 1.5px solid rgba(6,182,212,.45);
+  animation: hintRing 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.click-hint:hover {
+  transform: translateY(-2px) scale(1.06);
+  box-shadow:
+    0 0 0 4px rgba(6,182,212,.22),
+    0 8px 28px rgba(6,182,212,.45),
+    inset 0 1px 0 rgba(255,255,255,.25);
+}
+.click-hint .hint-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px #fff, 0 0 14px rgba(6,182,212,.8);
+  flex-shrink: 0;
+  animation: hintDotPulse 1.4s ease-in-out infinite;
+}
+@keyframes hintFloat {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes hintShimmer {
+  0%    { left: -80%; }
+  60%   { left: 130%; }
+  100%  { left: 130%; }
+}
+@keyframes hintRing {
+  0%,100% { opacity: .55; transform: scale(1); }
+  50%     { opacity: 0;   transform: scale(1.15); }
+}
+@keyframes hintDotPulse {
+  0%,100% { transform: scale(1);   opacity: 1; }
+  50%     { transform: scale(1.5); opacity: .7; }
+}
+
+/* ══════════════════════════════════════════
+   NAVIGATION BAR
+══════════════════════════════════════════ */
+#nav {
+  position: fixed;
+  bottom: clamp(10px,2vh,18px);
+  left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(13,13,31,.92);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 100px; padding: 6px 12px;
+  z-index: 9999; backdrop-filter: blur(30px);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.05);
+  /* IMPORTANT: pointer-events always on */
+  pointer-events: all;
+}
+.nav-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .2s; color: white; flex-shrink: 0;
+  user-select: none;
+}
+.nav-btn:hover { background: var(--teal); border-color: var(--teal); transform: scale(1.12); }
+.nav-btn:active { transform: scale(.95); }
+.nav-btn svg { width: 12px; height: 12px; }
+.dots { display: flex; gap: 4px; align-items: center; }
+.dot { width: 5px; height: 5px; border-radius: 100px; background: rgba(255,255,255,.2); cursor: pointer; transition: all .3s; flex-shrink: 0; }
+.dot.on { width: 20px; background: var(--teal); }
+.dot:hover:not(.on) { background: rgba(255,255,255,.5); transform: scale(1.3); }
+.ctr { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); min-width: 34px; text-align: center; }
+
+/* keyboard hint */
+.kb-hint { position: fixed; top: 12px; right: 14px; display: flex; gap: 4px; z-index: 9999; pointer-events: none; }
+.kb { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 5px; padding: 2px 7px; font-size: 9px; font-family: 'Space Mono', monospace; color: var(--muted); }
+
+/* slide counter flash */
+@keyframes counterFlash {
+  0%   { transform: scale(1.4); color: var(--teal); }
+  100% { transform: scale(1); color: var(--muted); }
+}
+.ctr.flash { animation: counterFlash .35s ease-out; }
+
+/* ══ TOOLTIP — premium popup card ══ */
+#tip {
+  position: fixed; z-index: 99999; pointer-events: none; display: none;
+}
+#tip.visible {
+  display: block;
+  animation: tipEntrance .28s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes tipEntrance {
+  from { opacity:0; transform: scale(.85) translateY(8px); }
+  to   { opacity:1; transform: scale(1)   translateY(0); }
+}
+.tip-in {
+  position: relative; overflow: hidden;
+  background: linear-gradient(145deg, rgba(10,8,30,.98) 0%, rgba(14,12,38,.98) 100%);
+  border-radius: 16px;
+  padding: 14px 18px 14px 15px;
+  max-width: min(300px, 75vw);
+  backdrop-filter: blur(32px);
+  /* animated gradient border via pseudo */
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    0 24px 60px rgba(0,0,0,.65),
+    0 0 0 1.5px rgba(6,182,212,.5),
+    0 0 30px rgba(6,182,212,.12),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+/* top accent bar */
+.tip-in::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, #06b6d4, #7c3aed, #ec4899, #06b6d4);
+  background-size: 200% auto;
+  animation: tipBarShimmer 2.5s linear infinite;
+}
+/* faint glow blob inside */
+.tip-in::after {
+  content: '';
+  position: absolute; top: -20px; right: -20px;
+  width: 80px; height: 80px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(6,182,212,.18), transparent 65%);
+  pointer-events: none;
+}
+@keyframes tipBarShimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+.tip-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 7px;
+}
+.tip-icon {
+  width: 24px; height: 24px; flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(6,182,212,.25), rgba(124,58,237,.25));
+  border: 1px solid rgba(6,182,212,.4);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+}
+.tip-icon svg { width: 12px; height: 12px; }
+.tip-title {
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(11px,.9vw,13px);
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  background: linear-gradient(135deg, #e0f7ff, #c4b5fd);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.tip-divider {
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, rgba(6,182,212,.3), rgba(124,58,237,.2), transparent);
+  margin-bottom: 8px;
+}
+.tip-desc {
+  color: #c8d8f0;
+  font-size: clamp(10px,.82vw,11.5px);
+  font-weight: 300;
+  line-height: 1.7;
+  position: relative; z-index: 1;
+}
+
+/* ══════════════════════════════════════════
+   LAYOUT HELPERS — FULLY RESPONSIVE
+══════════════════════════════════════════ */
+.col { display: flex; flex-direction: column; }
+.row { display: flex; flex-direction: row; }
+.center { align-items: center; justify-content: center; }
+.g1 { gap: clamp(5px,.7vw,9px); }
+.g2 { gap: clamp(8px,1.2vw,14px); }
+.g3 { gap: clamp(12px,1.8vw,20px); }
+.g4 { gap: clamp(16px,2.4vw,28px); }
+.two   { display: grid; grid-template-columns: 1fr 1fr; }
+.three { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.tc { text-align: center; }
+.full { width: 100%; }
+/* Responsive container */
+.w-cap {
+  width: 100%;
+  max-width: min(1260px, 96vw);
+  max-height: calc(100vh - clamp(70px,10vh,100px));
+  overflow: hidden;
+}
+.p2 { padding: clamp(10px,1.6vw,20px); }
+.p3 { padding: clamp(14px,2.2vw,28px); }
+.mt1 { margin-top: clamp(4px,.6vw,7px); }
+.mt2 { margin-top: clamp(8px,1.2vw,14px); }
+.mt3 { margin-top: clamp(12px,1.8vw,20px); }
+.mt4 { margin-top: clamp(16px,2.2vw,28px); }
+.mb1 { margin-bottom: clamp(4px,.6vw,7px); }
+.mb2 { margin-bottom: clamp(8px,1.2vw,14px); }
+.mb3 { margin-bottom: clamp(12px,1.8vw,20px); }
+
+/* Slide inner scroll for very small screens */
+.slide-scroll {
+  width: 100%;
+  max-height: calc(100vh - clamp(70px,10vh,100px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 4px;
+}
+.slide-scroll::-webkit-scrollbar { width: 0; }
+
+/* ══════════════════════════════════════════
+   HERO RINGS
+══════════════════════════════════════════ */
+.hero-ring {
+  position: absolute; border-radius: 50%; border: 1px solid;
+  animation: ringOut 4s ease-out infinite; pointer-events: none;
+}
+@keyframes ringOut { 0%{transform:scale(.55);opacity:.9} 100%{transform:scale(2.4);opacity:0} }
+
+/* ══════════════════════════════════════════
+   MODULE NUMBER BG
+══════════════════════════════════════════ */
+.mod-num {
+  font-family: 'Space Mono', monospace; font-weight: 700; line-height: 1;
+  font-size: clamp(6rem,16vw,14rem);
+  background: linear-gradient(180deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.01) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none; user-select: none;
+}
+
+/* ══════════════════════════════════════════
+   PROMPT CARDS (P.T.C.)
+══════════════════════════════════════════ */
+.ptc-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: clamp(6px,1vw,12px); }
+.ptc {
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+  border-radius: clamp(8px,1.3vw,16px); padding: clamp(10px,1.5vw,18px);
+  text-align: center; cursor: pointer;
+  transition: all .35s cubic-bezier(.34,1.56,.64,1); position: relative; overflow: hidden;
+}
+.ptc::before { content:''; position:absolute; inset:0; opacity:0; transition:opacity .3s; }
+.ptc.ptc-teal::before   { background: radial-gradient(circle at 50% 0%, rgba(6,182,212,.2), transparent 65%); }
+.ptc.ptc-purple::before { background: radial-gradient(circle at 50% 0%, rgba(124,58,237,.2), transparent 65%); }
+.ptc.ptc-pink::before   { background: radial-gradient(circle at 50% 0%, rgba(236,72,153,.2), transparent 65%); }
+.ptc:hover { transform: translateY(-7px) scale(1.04); }
+.ptc:hover::before { opacity:1; }
+.ptc-letter { font-family: 'Space Mono', monospace; font-size: clamp(1.8rem,3vw,3rem); font-weight: 700; line-height: 1; margin-bottom: .2em; }
+
+/* ══════════════════════════════════════════
+   AI FLOW CARDS
+══════════════════════════════════════════ */
+.flow-grid { display: grid; grid-template-columns: 1fr 50px 1fr; align-items: center; gap: clamp(6px,.9vw,12px); width: 100%; }
+.flow-card {
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+  border-radius: clamp(10px,1.6vw,20px); padding: clamp(12px,2vw,24px);
+  cursor: pointer; text-align: center;
+  transition: all .4s cubic-bezier(.34,1.56,.64,1); position: relative; overflow: hidden;
+}
+.flow-card::after { content:''; position:absolute; inset:0; border-radius:inherit; border:2px solid transparent; transition:border-color .3s, box-shadow .3s; }
+.flow-card:hover { transform: scale(1.03) translateY(-5px); }
+.flow-card.gpt:hover::after { border-color: rgba(16,185,129,.6); box-shadow: 0 18px 45px rgba(16,185,129,.12); }
+.flow-card.gem:hover::after { border-color: rgba(59,130,246,.6); box-shadow: 0 18px 45px rgba(59,130,246,.12); }
+.flow-icon { width: clamp(44px,5.5vw,64px); height: clamp(44px,5.5vw,64px); border-radius: clamp(9px,1.2vw,14px); display: flex; align-items: center; justify-content: center; margin: 0 auto clamp(6px,.9vw,10px); }
+.flow-icon svg { width: clamp(20px,2.8vw,30px); height: clamp(20px,2.8vw,30px); }
+.flow-connector { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--muted); }
+.flow-vline { flex:1; width:1px; background: linear-gradient(to bottom, transparent, rgba(6,182,212,.4), transparent); min-height: 24px; }
+.flow-connector svg { width: 18px; height: 18px; }
+
+/* ══════════════════════════════════════════
+   DETAIL LIST
+══════════════════════════════════════════ */
+.dl { list-style: none; display: flex; flex-direction: column; gap: clamp(5px,.8vw,9px); }
+.di {
+  display: flex; align-items: flex-start; gap: clamp(7px,.9vw,11px);
+  padding: clamp(8px,1vw,12px) clamp(10px,1.3vw,16px);
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+  border-radius: clamp(7px,.9vw,11px); transition: all .2s;
+}
+.di:hover { background: rgba(255,255,255,.06); transform: translateX(4px); }
+.di-ico { width: clamp(26px,2.8vw,34px); height: clamp(26px,2.8vw,34px); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.di-ico svg { width: clamp(12px,1.4vw,16px); height: clamp(12px,1.4vw,16px); }
+.di-t  { font-weight: 600; font-size: clamp(.62rem,.84vw,.78rem); margin-bottom: 2px; }
+.di-d  { font-size: clamp(.55rem,.7vw,.66rem); color: var(--muted); font-weight: 300; line-height: 1.5; }
+
+/* ══════════════════════════════════════════
+   CANVA SIGNUP CLONE
+══════════════════════════════════════════ */
+.canva-signup-wrap {
+  width: 100%; flex: 1; min-height: 0;
+  position: relative; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.07);
+}
+.cv-nav {
+  position: absolute; top: 0; left: 0; right: 0; height: 48px;
+  background: rgba(255,255,255,.97); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,.08);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(12px,2vw,24px); z-index: 30;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+}
+.cv-nav-logo { display: flex; align-items: center; }
+.cv-nav-links { display: flex; gap: clamp(10px,1.5vw,20px); font-size: clamp(10px,.9vw,13px); font-weight: 500; color: #374151; }
+.cv-nav-links span { cursor: pointer; transition: color .15s; }
+.cv-nav-links span:hover { color: #7c3aed; }
+.cv-nav-right { display: flex; align-items: center; gap: 8px; }
+.cv-btn-login { font-size: 12px; font-weight: 600; color: #374151; cursor: pointer; padding: 5px 12px; border-radius: 7px; transition: background .15s; }
+.cv-btn-login:hover { background: #f3f4f6; }
+.cv-btn-signup { font-size: 12px; font-weight: 700; color: white; background: #7c3aed; border: none; border-radius: 7px; padding: 6px 14px; cursor: pointer; font-family: 'Kanit', sans-serif; transition: all .2s; }
+.cv-btn-signup:hover { background: #6d28d9; box-shadow: 0 4px 12px rgba(124,58,237,.4); }
+.cv-mosaic {
+  position: absolute; inset: 0; top: 48px;
+  display: grid; grid-template-columns: repeat(10, 1fr);
+  gap: 8px; padding: 8px; overflow: hidden;
+}
+.cv-card { border-radius: 7px; overflow: hidden; animation: cvCardFloat ease-in-out infinite; }
+@keyframes cvCardFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+.cv-card-inner { width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;gap:3px;overflow:hidden; }
+.cv-card-line { border-radius: 2px; }
+.cv-overlay { position:absolute;inset:0;top:48px;background:rgba(5,5,17,.52);backdrop-filter:blur(2px); }
+.cv-modal {
+  position: absolute; top: 48px; left: 50%; transform: translateX(-50%);
+  width: min(400px, 90vw);
+  background: white; border-radius: 14px; padding: clamp(20px,3vw,34px) clamp(18px,2.5vw,38px);
+  box-shadow: 0 24px 70px rgba(0,0,0,.32), 0 0 0 1px rgba(0,0,0,.05);
+  z-index: 20; color: #0f172a;
+  max-height: calc(100% - 60px); overflow-y: auto;
+}
+.cv-modal::-webkit-scrollbar { width: 0; }
+.cv-modal h2 { font-size: clamp(14px,1.8vw,20px); font-weight: 800; color: #0f172a; margin-bottom: 5px; line-height: 1.25; }
+.cv-modal p  { font-size: 12px; color: #64748b; margin-bottom: 18px; font-weight: 300; line-height: 1.5; }
+.cv-social-btn {
+  width: 100%; height: 42px; border: 1.5px solid #e2e8f0; border-radius: 9px;
+  display: flex; align-items: center; gap: 12px; padding: 0 15px;
+  font-size: 12.5px; font-weight: 500; color: #1e293b;
+  cursor: pointer; transition: all .18s; margin-bottom: 8px;
+  background: white; font-family: 'Kanit', sans-serif; position: relative; overflow: hidden;
+}
+.cv-social-btn:hover { border-color: #c4b5fd; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.cv-social-icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.cv-divider { display:flex;align-items:center;gap:10px;margin:12px 0; }
+.cv-divider::before,.cv-divider::after{content:'';flex:1;height:1px;background:#e2e8f0;}
+.cv-divider span{font-size:11px;color:#94a3b8;white-space:nowrap;}
+.cv-other-link{text-align:center;font-size:12px;color:#7c3aed;font-weight:600;cursor:pointer;margin:7px 0 12px;text-decoration:underline;text-underline-offset:3px;}
+.cv-terms{font-size:10.5px;color:#94a3b8;line-height:1.6;}
+.cv-terms a{color:#7c3aed;text-decoration:underline;cursor:pointer;}
+.cv-biz-btn{width:100%;height:40px;border:1.5px solid #e2e8f0;border-radius:9px;display:flex;align-items:center;gap:9px;padding:0 15px;font-size:12px;font-weight:500;color:#374151;cursor:pointer;transition:all .18s;background:#fafafa;font-family:'Kanit',sans-serif;margin-top:7px;}
+.cv-biz-btn:hover{border-color:#c4b5fd;background:white;}
+
+/* ══════════════════════════════════════════
+   CANVA EDITOR CLONE
+══════════════════════════════════════════ */
+.editor-wrap {
+  width: 100%; flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  background: #f0f0f0; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
+}
+.ed-top {
+  height: 48px; min-height: 48px;
+  background: white; border-bottom: 1px solid #e5e7eb;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(8px,1.2vw,14px); flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04); cursor: pointer;
+}
+.ed-top-left { display: flex; align-items: center; gap: clamp(6px,.8vw,10px); }
+.ed-home-btn { width: 30px; height: 30px; background: #7c3aed; border-radius: 7px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; flex-shrink: 0; }
+.ed-home-btn:hover { background: #6d28d9; transform: scale(1.05); }
+.ed-home-btn svg { width: 14px; height: 14px; }
+.ed-menu-items { display: flex; gap: 2px; }
+.ed-menu-item { font-size: clamp(10px,.9vw,12.5px); font-weight: 500; color: #374151; padding: 4px 8px; border-radius: 5px; cursor: pointer; transition: all .15s; }
+.ed-menu-item:hover { background: #f3f4f6; color: #111; }
+.ed-menu-item.active { background: #f0e7ff; color: #7c3aed; }
+.ed-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; }
+.ed-filename { font-size: 12px; font-weight: 600; color: #111; }
+.ed-autosave { font-size: 10px; color: #10b981; background: #ecfdf5; border-radius: 4px; padding: 2px 7px; font-weight: 600; }
+.ed-top-right { display: flex; align-items: center; gap: 6px; }
+.ed-icon-btn { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; color: #6b7280; }
+.ed-icon-btn:hover { background: #f3f4f6; color: #111; }
+.ed-icon-btn svg { width: 14px; height: 14px; }
+.ed-present-btn { display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-size:11.5px;font-weight:600;color:#374151;cursor:pointer;border:1.5px solid #e5e7eb;transition:all .2s;font-family:'Kanit',sans-serif; }
+.ed-present-btn:hover { border-color:#c4b5fd;color:#7c3aed;background:#faf5ff; }
+.ed-share-btn { display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:7px;font-size:11.5px;font-weight:700;color:white;background:#7c3aed;border:none;cursor:pointer;font-family:'Kanit',sans-serif;transition:all .2s;box-shadow:0 2px 8px rgba(124,58,237,.3); }
+.ed-share-btn:hover { background:#6d28d9;transform:translateY(-1px); }
+.ed-body { display:flex;flex:1;min-height:0;overflow:hidden; }
+.ed-rail { width: clamp(50px,5.5vw,62px); min-width: clamp(50px,5.5vw,62px); background:white;border-right:1px solid #e9eaec;display:flex;flex-direction:column;align-items:center;padding:5px 0;gap:1px;flex-shrink:0;overflow:hidden; }
+.ed-rail-item { width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 3px;cursor:pointer;transition:all .15s;color:#6b7280;font-size:clamp(7px,.65vw,9px);font-weight:500;position:relative;border-radius:0; }
+.ed-rail-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--purple);border-radius:0 2px 2px 0;opacity:0;transition:opacity .15s;}
+.ed-rail-item:hover{background:#faf5ff;color:#7c3aed;}
+.ed-rail-item.on{color:#7c3aed;}
+.ed-rail-item.on::before{opacity:1;}
+.ed-rail-item svg{width:18px;height:18px;stroke-width:1.7;}
+.ed-rail-item span{font-size:clamp(7px,.65vw,9px);line-height:1;text-align:center;}
+.ed-rail-sep{width:32px;height:1px;background:#e9eaec;margin:3px auto;flex-shrink:0;}
+.ed-rail-magic{color:#8b5cf6!important;}
+.ed-panel{width:clamp(180px,18vw,224px);min-width:clamp(180px,18vw,224px);background:white;border-right:1px solid #e9eaec;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.ed-panel-head{padding:10px 10px 6px;flex-shrink:0;}
+.ed-search{display:flex;align-items:center;gap:7px;background:#f3f4f6;border:1.5px solid #e5e7eb;border-radius:7px;padding:6px 10px;font-size:11.5px;color:#9ca3af;cursor:text;transition:border-color .15s;}
+.ed-search:hover{border-color:#c4b5fd;}
+.ed-search svg{width:12px;height:12px;flex-shrink:0;}
+.ed-panel-section{font-size:10px;font-weight:700;color:#374151;padding:8px 10px 5px;letter-spacing:.02em;flex-shrink:0;}
+.ed-panel-body{flex:1;overflow-y:auto;padding:0 7px 7px;}
+.ed-panel-body::-webkit-scrollbar{width:3px;}
+.ed-panel-body::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:2px;}
+.tpl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;}
+.tpl-card{aspect-ratio:3/4;border-radius:6px;overflow:hidden;cursor:pointer;transition:all .2s;position:relative;border:1.5px solid transparent;}
+.tpl-card:hover{transform:scale(1.05);box-shadow:0 5px 16px rgba(0,0,0,.14);border-color:#7c3aed;}
+.tpl-card-inner{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px;gap:4px;}
+.tpl-card-line{border-radius:2px;}
+.tpl-check{position:absolute;inset:0;background:rgba(124,58,237,.25);opacity:0;transition:opacity .2s;display:flex;align-items:center;justify-content:center;}
+.tpl-card:hover .tpl-check{opacity:1;}
+.ed-page-strip{width:clamp(60px,7vw,78px);min-width:clamp(60px,7vw,78px);background:#f5f5f5;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;align-items:center;padding:10px 6px;gap:7px;overflow-y:auto;flex-shrink:0;}
+.ed-page-strip::-webkit-scrollbar{width:0;}
+.ed-page-thumb{width:54px;aspect-ratio:3/4;border-radius:4px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
+.ed-page-thumb.on{border-color:#7c3aed;box-shadow:0 0 0 2px rgba(124,58,237,.18);}
+.ed-page-thumb:hover{border-color:#c4b5fd;}
+.ed-canvas-area{flex:1;background:#e8eaed;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;min-width:0;}
+.ed-ruler-h{position:absolute;top:0;left:0;right:0;height:16px;background:#f3f4f6;border-bottom:1px solid #d1d5db;z-index:2;display:flex;align-items:center;padding:0 70px 0 70px;overflow:hidden;}
+.ed-ruler-v{position:absolute;top:16px;left:0;bottom:0;width:16px;background:#f3f4f6;border-right:1px solid #d1d5db;z-index:2;}
+.ed-ruler-mark{font-size:7px;color:#9ca3af;font-family:'Space Mono',monospace;flex-shrink:0;user-select:none;}
+.ed-page{background:white;width:min(240px,26vw);height:min(340px,36vw);box-shadow:0 5px 25px rgba(0,0,0,.14),0 0 0 1px rgba(0,0,0,.06);position:relative;overflow:hidden;flex-shrink:0;z-index:3;transition:background .4s ease;}
+.ed-page-selection{position:absolute;inset:-2px;border:2px solid #7c3aed;pointer-events:none;opacity:0;transition:opacity .2s;z-index:10;box-shadow:0 0 0 1px white inset;}
+.ed-page:hover .ed-page-selection{opacity:.5;}
+.ed-zoom-bar{position:absolute;bottom:12px;right:14px;background:white;border:1px solid #e5e7eb;border-radius:7px;display:flex;align-items:center;gap:3px;padding:3px 7px;box-shadow:0 2px 7px rgba(0,0,0,.07);z-index:5;}
+.ed-zoom-btn{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6b7280;transition:all .15s;font-size:13px;font-weight:700;}
+.ed-zoom-btn:hover{background:#f3f4f6;color:#111;}
+.ed-zoom-val{font-size:10.5px;font-weight:600;color:#374151;min-width:28px;text-align:center;font-family:'Space Mono',monospace;}
+.ed-page-indicator{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.42);color:white;border-radius:100px;padding:2px 10px;font-size:10px;font-weight:500;z-index:5;display:flex;align-items:center;gap:7px;}
+.ed-page-sep{width:1px;height:9px;background:rgba(255,255,255,.3);}
+
+/* ══════════════════════════════════════════
+   CHAT SIMULATIONS
+══════════════════════════════════════════ */
+.gpt-shell {
+  width: 100%; flex: 1; min-height: 0;
+  display: flex;
+  background: #212121; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 24px 65px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
+}
+.gpt-sidebar{width:min(200px,18vw);background:#171717;padding:10px;display:flex;flex-direction:column;flex-shrink:0;}
+.gpt-sb-logo{display:flex;align-items:center;gap:7px;margin-bottom:12px;}
+.gpt-sb-logo-icon{width:22px;height:22px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:white;flex-shrink:0;}
+.gpt-sb-logo span{font-size:12px;font-weight:700;color:white;}
+.gpt-new{display:flex;align-items:center;gap:5px;padding:7px 9px;border-radius:7px;background:rgba(255,255,255,.06);cursor:pointer;font-size:11px;color:#e5e7eb;margin-bottom:10px;transition:background .15s;font-family:'Kanit',sans-serif;}
+.gpt-new svg{width:12px;height:12px;}
+.gpt-new:hover{background:rgba(255,255,255,.1);}
+.gpt-hist-label{font-size:9px;color:#4b5563;letter-spacing:.1em;text-transform:uppercase;padding:0 5px;margin-bottom:3px;}
+.gpt-hist{padding:5px 7px;border-radius:5px;font-size:10.5px;color:#9ca3af;cursor:pointer;transition:all .15s;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Kanit',sans-serif;}
+.gpt-hist:hover{background:rgba(255,255,255,.06);color:white;}
+.gpt-hist.on{background:rgba(255,255,255,.08);color:white;}
+.gpt-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.gpt-topbar{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;}
+.gpt-model{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.06);border-radius:20px;padding:3px 10px;font-size:10px;color:#9ca3af;font-family:'Space Mono',monospace;}
+.gpt-msgs{flex:1;overflow-y:auto;padding:16px 8% 12px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;}
+.gpt-msgs::-webkit-scrollbar{width:3px;}
+.gpt-msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+.msg-u{align-self:flex-end;background:#2f2f2f;color:#ececf1;padding:9px 14px;border-radius:14px 14px 4px 14px;max-width:78%;font-size:clamp(10px,.9vw,12px);line-height:1.55;font-family:'Kanit',sans-serif;}
+.msg-a{align-self:flex-start;display:flex;gap:9px;align-items:flex-start;max-width:88%;}
+.msg-a-av{width:26px;height:26px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:white;flex-shrink:0;box-shadow:0 2px 7px rgba(16,185,129,.28);}
+.msg-a-txt{color:#ececf1;font-size:clamp(10px,.9vw,12px);line-height:1.75;white-space:pre-wrap;font-family:'Kanit',sans-serif;padding-top:2px;}
+.gpt-input-area{padding:10px 8%;border-top:1px solid rgba(255,255,255,.06);}
+.gpt-input-box{background:#2f2f2f;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:9px;}
+.gpt-input-box svg{width:14px;height:14px;color:#6b7280;flex-shrink:0;}
+.gpt-input-txt{flex:1;font-size:11px;color:rgba(255,255,255,.4);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'Kanit',sans-serif;}
+.gpt-send{width:28px;height:28px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.18);}
+.gpt-send svg{width:12px;height:12px;color:#111;}
+.gpt-disc{text-align:center;font-size:9px;color:#4b5563;padding-top:4px;font-family:'Kanit',sans-serif;}
+
+.gem-shell{width:100%;flex:1;min-height:0;display:flex;background:#131314;border-radius:10px;overflow:hidden;box-shadow:0 24px 65px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05);}
+.gem-sidebar{width:min(200px,18vw);background:#1c1c1e;padding:10px;display:flex;flex-direction:column;flex-shrink:0;}
+.gem-sb-logo{display:flex;align-items:center;gap:7px;margin-bottom:16px;}
+.gem-gem-icon{width:24px;height:24px;border-radius:50%;background:conic-gradient(from 0deg,#4285f4,#ea4335,#fbbc05,#34a853,#4285f4);flex-shrink:0;}
+.gem-sb-logo span{font-size:12px;font-weight:700;color:white;}
+.gem-menu{padding:5px 7px;border-radius:7px;font-size:11px;color:#9ca3af;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;margin-bottom:2px;font-family:'Kanit',sans-serif;}
+.gem-menu svg{width:13px;height:13px;flex-shrink:0;}
+.gem-menu:hover{background:rgba(255,255,255,.06);color:white;}
+.gem-menu.on{background:rgba(66,133,244,.15);color:#93c5fd;}
+.gem-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.gem-topbar{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between;}
+.gem-model{display:flex;align-items:center;gap:5px;background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.2);border-radius:20px;padding:3px 10px;font-size:9.5px;color:#93c5fd;font-family:'Space Mono',monospace;}
+.gem-msgs{flex:1;overflow-y:auto;padding:14px 8%;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth;}
+.gem-msgs::-webkit-scrollbar{width:3px;}
+.gem-msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+.gem-welcome{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 0;gap:8px;}
+.gem-welcome-icon{width:44px;height:44px;border-radius:50%;background:conic-gradient(from 0deg,#4285f4,#ea4335,#fbbc05,#34a853,#4285f4);margin-bottom:3px;}
+.gem-welcome h3{font-size:clamp(13px,1.8vw,18px);font-weight:700;background:linear-gradient(135deg,#4285f4,#ea4335 33%,#fbbc05 66%,#34a853);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center;}
+.gem-welcome p{font-size:11px;color:#6b7280;font-weight:300;}
+.gem-img-result{width:min(180px,26vw);height:min(180px,26vw);border-radius:12px;background-size:cover;background-position:center;box-shadow:0 14px 36px rgba(66,133,244,.18),0 0 0 1px rgba(255,255,255,.06);opacity:0;transform:scale(.8) rotateX(10deg);transition:all .9s cubic-bezier(.34,1.56,.64,1);display:none;}
+.gem-img-result.show{opacity:1;transform:scale(1) rotateX(0);display:block;}
+.gem-av{width:26px;height:26px;background:conic-gradient(from 0deg,#4285f4,#ea4335,#fbbc05,#34a853,#4285f4);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:white;flex-shrink:0;}
+.gem-input-area{padding:10px 8%;}
+.gem-input-box{background:#1c1c1e;border:1.5px solid rgba(255,255,255,.1);border-radius:26px;padding:10px 14px;display:flex;align-items:center;gap:9px;transition:border-color .2s;}
+.gem-input-box:hover{border-color:rgba(66,133,244,.4);}
+.gem-input-box svg{width:14px;height:14px;color:#6b7280;flex-shrink:0;}
+.gem-spark{animation:pulse 2s ease-in-out infinite;color:#4285f4!important;}
+.gem-disc{text-align:center;font-size:9px;color:#4b5563;padding-top:4px;font-family:'Kanit',sans-serif;}
+.cur{display:inline-block;width:2px;height:1em;background:white;margin-left:2px;animation:blink 1s step-end infinite;vertical-align:middle;}
+
+/* ══════════════════════════════════════════
+   EXCITEMENT EXTRAS
+   — Slide number burst, glitch title, etc.
+══════════════════════════════════════════ */
+/* Glitch effect on hero title */
+@keyframes glitch1 {
+  0%,95%,100% { clip-path: none; transform: translate(0); }
+  96% { clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%); transform: translate(-3px,0); }
+  97% { clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); transform: translate(3px,0); }
+  98% { clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%); transform: translate(-2px,0); }
+}
+.glitch { animation: glitch1 6s ease-in-out infinite; }
+
+/* Outro rings */
+.outro-ring { position:absolute;border-radius:50%;border:1px solid;animation:ringOut 5s ease-out infinite;pointer-events:none; }
+
+/* Section transition flash */
+@keyframes flashLine {
+  0%   { opacity:1; transform:scaleX(0); }
+  50%  { opacity:1; transform:scaleX(1); }
+  100% { opacity:0; transform:scaleX(1); }
+}
+#trans-flash {
+  position: fixed; top:0; left:0; right:0; height:100vh;
+  background: linear-gradient(135deg, rgba(124,58,237,.08), rgba(6,182,212,.08));
+  pointer-events:none; z-index: 200; opacity:0;
+  transition: opacity .15s;
+}
+#trans-flash.flash { animation: transFlash .45s ease-out; }
+@keyframes transFlash {
+  0%   { opacity: .4; }
+  100% { opacity: 0; }
+}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .two, .three, .flow-grid { grid-template-columns: 1fr; }
+  .ptc-grid { grid-template-columns: repeat(3,1fr); }
+  .gpt-sidebar, .gem-sidebar { display: none; }
+  .ed-panel, .ed-page-strip { display: none; }
+  .ed-rail { width: 44px; min-width: 44px; }
+  .cv-nav-links { display: none; }
+  .flow-connector { display: none; }
+  .flow-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .ptc-grid { grid-template-columns: repeat(3,1fr); gap: 5px; }
+  .ed-rail { display: none; }
+  .kb-hint { display: none; }
+}
+@media (max-height: 600px) {
+  .disp { font-size: clamp(1.6rem,4vw,3rem); }
+  .h1   { font-size: clamp(1.2rem,3vw,2.4rem); }
+  .mod-num { font-size: clamp(4rem,10vw,8rem); }
+}
+</style>
+</head>
+<body>
+
+<!-- TRANSITION FLASH -->
+<div id="trans-flash"></div>
+
+<!-- PROGRESS BAR -->
+<div id="progress-bar" style="width:0%"></div>
+
+<!-- BACKGROUND -->
+<div id="bg">
+  <div class="bg-mesh"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-scan"></div>
+  <div class="bg-noise"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div id="pts"></div>
+</div>
+
+<!-- SLIDES -->
+<div class="stage" id="stage">
+
+<!-- ════════ SLIDE 0: HERO ════════ -->
+<section class="slide" id="s0">
+  <div class="w-cap col center tc" style="position:relative;">
+    <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;">
+      <div class="hero-ring" style="width:min(560px,78vw);height:min(560px,78vw);border-color:rgba(6,182,212,.12);animation-delay:0s;"></div>
+      <div class="hero-ring" style="width:min(400px,55vw);height:min(400px,55vw);border-color:rgba(124,58,237,.18);animation-delay:1.4s;"></div>
+      <div class="hero-ring" style="width:min(240px,34vw);height:min(240px,34vw);border-color:rgba(236,72,153,.26);animation-delay:2.8s;"></div>
+    </div>
+    <div class="a1"><span class="badge b-teal">✦ WORKSHOP 2026 CHANAMAN </span></div>
+    <div class="a2 mt3" style="display:flex;align-items:center;justify-content:center;gap:12px;">
+      <img src="https://image2url.com/r2/default/files/1771915797839-17f42bdb-f012-4ebc-86f6-ef99d9ee5d07.png" alt="Canva" style="height:clamp(22px,3.5vw,40px);filter:brightness(0) invert(1);">
+    </div>
+    <h1 class="a3 disp glitch mt1">AI <span class="shimmer-text">&amp; Canva</span><br>Design Mastery</h1>
+    <p class="a4 body mt2" style="max-width:min(480px,75vw);">ติดปีกงานออกแบบด้วยสมองกล<br>ChatGPT &amp; Google Gemini</p>
+    <div class="a5" style="width:clamp(40px,7vw,80px);height:2px;background:linear-gradient(to right,transparent,var(--teal),transparent);margin:clamp(10px,1.6vw,18px) auto;"></div>
+    <div class="a6 row center g2" style="flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:100px;padding:.4em 1.1em;font-size:clamp(.6rem,.88vw,.78rem);color:var(--muted);">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+        Speaker: [จัดทำโดย แผนกเทคโนโลยีธุรกิจดิจิทัล วิทยาลัยเทคนิคอำนาจเจริญ]
+      </div>
+      <span class="badge b-purple">Module 01–02</span>
+      <span class="badge b-teal">Interactive</span>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 1: MODULE 01 ════════ -->
+<section class="slide" id="s1">
+  <div class="w-cap col center tc" style="position:relative;">
+    <div class="mod-num">01</div>
+    <div style="position:relative;z-index:1;" class="col center g3">
+      <div class="a1"><span class="badge b-teal">Module 01</span></div>
+      <h2 class="a2 h1">ทำความรู้จักกับ<br><span class="grad-main">Canva</span></h2>
+      <p class="a3 body" style="max-width:min(440px,80vw);">เริ่มต้นสมัครสมาชิกและสำรวจ Interface<br>เพื่อการออกแบบระดับมืออาชีพ</p>
+      <div class="a4 row center g2" style="flex-wrap:wrap;">
+        <span class="badge b-purple">สมัครสมาชิก</span>
+        <span class="badge b-teal">Interface</span>
+        <span class="badge b-pink">เครื่องมือ</span>
+        <span class="badge b-white">Magic AI</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 2: WHAT IS CANVA ════════ -->
+<section class="slide" id="s2">
+  <div class="w-cap col g3" style="height:calc(100vh - clamp(70px,10vh,100px));">
+    <div class="a1 tc" style="flex-shrink:0;">
+      <span class="badge b-teal mb2">🎨 รู้จัก Canva</span>
+      <h2 class="h1"><span class="grad-main">Canva</span> คืออะไร?</h2>
+    </div>
+    <div class="a2 two g3" style="flex:1;min-height:0;">
+      <!-- left: definition + features -->
+      <div class="glass p3 col g3" style="overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:44px;height:44px;background:rgba(6,182,212,.15);border:1px solid rgba(6,182,212,.35);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2" width="22" height="22"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:800;font-size:clamp(.85rem,1.1vw,1.05rem);color:#e0f7ff;">โปรแกรมออกแบบออนไลน์</div>
+            <div class="sm" style="color:var(--muted);">ใช้ง่าย ไม่ต้องติดตั้ง ฟรี!</div>
+          </div>
+        </div>
+        <p style="font-size:clamp(.68rem,.88vw,.84rem);line-height:1.8;color:#e2e8f0;font-weight:300;">
+          <strong style="color:white;">Canva</strong> คือเครื่องมือออกแบบกราฟิกออนไลน์จาก ออสเตรเลีย เปิดตัวปี 2013 ปัจจุบันมีผู้ใช้กว่า <strong style="color:#67e8f9;">170 ล้านคน</strong>ทั่วโลก ออกแบบได้ทุกอย่างตั้งแต่โปสเตอร์ โซเชียล นำเสนองาน ไปจนถึงวิดีโอ — <strong style="color:#c4b5fd;">ในเบราว์เซอร์</strong> โดยไม่ต้องลง Adobe!
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+          <div style="background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);border-radius:9px;padding:10px 12px;">
+            <div style="font-size:clamp(1.2rem,2vw,1.6rem);margin-bottom:3px;">🖼️</div>
+            <div style="font-weight:700;font-size:clamp(.6rem,.78vw,.74rem);color:#67e8f9;">โปสเตอร์ & ป้าย</div>
+          </div>
+          <div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:9px;padding:10px 12px;">
+            <div style="font-size:clamp(1.2rem,2vw,1.6rem);margin-bottom:3px;">📊</div>
+            <div style="font-weight:700;font-size:clamp(.6rem,.78vw,.74rem);color:#c4b5fd;">Presentation</div>
+          </div>
+          <div style="background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.2);border-radius:9px;padding:10px 12px;">
+            <div style="font-size:clamp(1.2rem,2vw,1.6rem);margin-bottom:3px;">📱</div>
+            <div style="font-weight:700;font-size:clamp(.6rem,.78vw,.74rem);color:#f9a8d4;">โซเชียลมีเดีย</div>
+          </div>
+          <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:9px;padding:10px 12px;">
+            <div style="font-size:clamp(1.2rem,2vw,1.6rem);margin-bottom:3px;">🎬</div>
+            <div style="font-weight:700;font-size:clamp(.6rem,.78vw,.74rem);color:#fcd34d;">วิดีโอ & Reel</div>
+          </div>
+        </div>
+      </div>
+      <!-- right: free vs pro comparison -->
+      <div class="col g2">
+        <span class="badge b-green a3">บัญชีฟรี vs Pro</span>
+        <div class="a3 glass p3 col g2" style="flex:1;min-height:0;overflow:hidden;">
+          <!-- FREE -->
+          <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:10px 12px;">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+              <span class="badge b-green" style="font-size:clamp(.5rem,.65vw,.62rem);">FREE ✓</span>
+              <span style="font-size:clamp(.62rem,.8vw,.75rem);font-weight:600;color:#6ee7b7;">บัญชีฟรี</span>
+            </div>
+            <div style="font-size:clamp(.58rem,.74vw,.7rem);color:#a7f3d0;line-height:1.75;font-weight:300;">
+              ✓ เทมเพลตฟรีกว่า 250,000 แบบ<br>
+              ✓ พื้นที่เก็บงาน 5GB<br>
+              ✓ ดาวน์โหลด PNG / JPG / PDF<br>
+              ✓ Magic AI บางส่วน<br>
+              ✗ ไม่มี Background Remover<br>
+              ✗ เทมเพลต Pro (มีลายน้ำ)
+            </div>
+          </div>
+          <!-- PRO -->
+          <div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.25);border-radius:10px;padding:10px 12px;">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+              <span class="badge b-purple" style="font-size:clamp(.5rem,.65vw,.62rem);">PRO 💎</span>
+              <span style="font-size:clamp(.62rem,.8vw,.75rem);font-weight:600;color:#c4b5fd;">Canva Pro (~399 บ./เดือน)</span>
+            </div>
+            <div style="font-size:clamp(.58rem,.74vw,.7rem);color:#ddd6fe;line-height:1.75;font-weight:300;">
+              ✓ ทุกอย่างในฟรี +<br>
+              ✓ พื้นที่ 1TB<br>
+              ✓ Background Remover<br>
+              ✓ Magic AI ครบชุด<br>
+              ✓ Brand Kit ส่วนตัว<br>
+              ✓ Magic Resize ทุกขนาด
+            </div>
+          </div>
+          <div style="background:rgba(6,182,212,.08);border:1px dashed rgba(6,182,212,.3);border-radius:8px;padding:8px 11px;font-size:clamp(.57rem,.72vw,.68rem);color:#67e8f9;font-weight:600;text-align:center;">
+            💡 นักเรียน/ครู ใช้ Canva for Education ฟรีเลย!
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 3: CANVA SIGNUP ════════ -->
+<section class="slide" id="s3">
+<div class="w-cap col g2" style="height:calc(100vh - clamp(70px,10vh,100px));">
+  <div class="a1 row g2" style="align-items:center;flex-shrink:0;">
+    <span class="badge b-teal">Canva — หน้าสมัครสมาชิก</span>
+    <span class="click-hint">
+      <span class="hint-dot"></span>
+      คลิกปุ่มต่างๆ เพื่อดูคำอธิบาย
+    </span>
+  </div>
+  <div class="canva-signup-wrap a2">
+    <div class="cv-nav">
+      <div class="cv-nav-logo">
+        <svg viewBox="0 0 134 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:72px;height:22px;">
+          <path d="M39.2 20c0 10.8-8.8 19.6-19.6 19.6S0 30.8 0 20 8.8.4 19.6.4 39.2 9.2 39.2 20z" fill="#00C4CC"/>
+          <path d="M19.6 28c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-12.8c-2.6 0-4.8 2.2-4.8 4.8s2.2 4.8 4.8 4.8 4.8-2.2 4.8-4.8-2.2-4.8-4.8-4.8z" fill="white"/>
+          <text x="46" y="28" font-family="Georgia,serif" font-weight="700" font-size="22" fill="#1A1A2E" letter-spacing="-0.5">Canva</text>
+        </svg>
+      </div>
+      <div class="cv-nav-links">
+        <span>ดีไซน์</span><span>ผลิตภัณฑ์</span><span>แพลนสมาชิก</span><span>ธุรกิจ</span><span>สำหรับครูและนักเรียน</span>
+      </div>
+      <div class="cv-nav-right">
+        <div class="cv-btn-login">เข้าสู่ระบบ</div>
+        <button class="cv-btn-signup">สมัครใช้งานฟรี</button>
+      </div>
+    </div>
+    <div class="cv-mosaic" id="cvMosaic"></div>
+    <div class="cv-overlay"></div>
+    <div class="cv-modal">
+      <h2>ลงชื่อเข้าใช้หรือสมัครใช้งานฟรี</h2>
+      <p>เข้าสู่ระบบหรือสร้างบัญชี Canva ได้ง่ายๆ</p>
+      <div class="cv-social-btn" onclick="showTip(event,'Google — แนะนำสำหรับมือใหม่ ✓','ซิงก์งานออกแบบกับ Google Drive อัตโนมัติ เปิดไฟล์ข้ามอุปกรณ์ได้ทันที')">
+        <div class="cv-social-icon"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></div>
+        เข้าสู่ระบบด้วย Google
+      </div>
+      <div class="cv-social-btn" onclick="showTip(event,'Facebook','เชื่อมต่อกับเพื่อนและแชร์งานออกแบบลงโซเชียลได้ทันที')">
+        <div class="cv-social-icon"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></div>
+        เข้าสู่ระบบด้วย Facebook
+      </div>
+      <div class="cv-social-btn" onclick="showTip(event,'LINE — ยอดนิยมสำหรับคนไทย 🇹🇭','ช่องทางที่สะดวกที่สุดสำหรับคนไทย ใช้บัญชี LINE ที่มีอยู่แล้วล็อกอินได้เลย')">
+        <div class="cv-social-icon"><svg viewBox="0 0 24 24" width="20" height="20"><rect width="24" height="24" rx="6" fill="#00B900"/><path fill="white" d="M12 4.8C7.4 4.8 3.6 7.9 3.6 11.7c0 3.4 3 6.3 7.1 6.8.3.1.7.2.8.5.1.2.1.6 0 .9l-.1.9c0 .3-.2 1.2 1 .7 1.2-.5 6.6-3.9 9-6.7 1.7-1.8 2.5-3.7 2.5-5.1C23.9 7.9 20.1 4.8 12 4.8z"/></svg></div>
+        เข้าสู่ระบบด้วย Line
+      </div>
+      <div class="cv-divider"><span>หรือ</span></div>
+      <div class="cv-other-link" onclick="showTip(event,'ตัวเลือกอื่นๆ','รองรับ Apple ID, Microsoft, Twitter/X และ SSO สำหรับองค์กร')">เข้าสู่ระบบด้วยวิธีอื่น</div>
+      <div class="cv-terms">การดำเนินการต่อถือว่าคุณยอมรับ <a>ข้อตกลงการใช้งาน</a> อ่าน<a>นโยบายความเป็นส่วนตัว</a>ของเรา</div>
+      <div class="cv-biz-btn" onclick="showTip(event,'ลงทะเบียนสำหรับธุรกิจ','จัดการทีม Brand Kit ส่วนกลาง Template ที่ล็อก Branding และ Analytics')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        ลงทะเบียนสำหรับธุรกิจ
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ════════ SLIDE 4: CANVA EDITOR ════════ -->
+<section class="slide" id="s4">
+<div class="w-cap col g2" style="height:calc(100vh - clamp(70px,10vh,100px));">
+  <div class="a1 row g2" style="align-items:center;flex-shrink:0;">
+    <span class="badge b-teal">Canva Editor — หน้าออกแบบ</span>
+    <span class="click-hint">
+      <span class="hint-dot"></span>
+      คลิกทุกส่วนเพื่อเรียนรู้
+    </span>
+  </div>
+  <div class="editor-wrap a2">
+    <div class="ed-top" onclick="showTip(event,'Top Bar — แถบควบคุมหลัก','จัดการไฟล์ เปลี่ยนชื่องาน ดู Undo/Redo ปรับขนาดหน้ากระดาษ และแชร์งาน Auto-Save บันทึกทุกขณะ')">
+      <div class="ed-top-left">
+        <div class="ed-home-btn"><svg viewBox="0 0 24 24" fill="white" width="14" height="14"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
+        <div class="ed-menu-items">
+          <div class="ed-menu-item" onclick="event.stopPropagation();showTip(event,'เมนูไฟล์','ดาวน์โหลด PDF พิมพ์งาน นำเข้าไฟล์ ดูประวัติการแก้ไข')">ไฟล์</div>
+          <div class="ed-menu-item" onclick="event.stopPropagation();showTip(event,'ปรับขนาด','เปลี่ยน Canvas size ได้ทันที A4, Instagram, YouTube Thumbnail และอีกกว่า 100 ขนาด')">ปรับขนาด</div>
+          <div class="ed-menu-item active">แก้ไข</div>
+          <div class="ed-menu-item" onclick="event.stopPropagation();showTip(event,'มุมมอง','ซูม แสดง Ruler Guides Grid และโหมด Fullscreen')">มุมมอง</div>
+        </div>
+      </div>
+      <div class="ed-center">
+        <span class="ed-filename">งานออกแบบของฉัน</span>
+        <span class="ed-autosave">✓ บันทึกแล้ว</span>
+      </div>
+      <div class="ed-top-right">
+        <div class="ed-icon-btn" onclick="event.stopPropagation();showTip(event,'Undo / Redo','Ctrl+Z ย้อนกลับ, Ctrl+Y ทำซ้ำ')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.71"/></svg></div>
+        <div class="ed-present-btn" onclick="event.stopPropagation();showTip(event,'นำเสนอ','Presentation Mode เต็มจอ รองรับ Auto-Play Timer และแชร์ลิงก์ Live')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>นำเสนอ</div>
+        <button class="ed-share-btn" onclick="event.stopPropagation();showTip(event,'แชร์งาน','แชร์ลิงก์ ดาวน์โหลด PDF/PNG/MP4 หรือส่งให้ผู้อื่นแก้ไขร่วมกัน Realtime')"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="12" height="12"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>แชร์</button>
+      </div>
+    </div>
+    <div class="ed-body">
+      <div class="ed-rail">
+        <div class="ed-rail-item on" id="ri0" onclick="switchPanel('design',0);showTip(event,'เทมเพลต','คลังเทมเพลตนับพัน แบ่งตามหมวด Presentation โปสเตอร์ โซเชียล และอีกมาก')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          <span>เทมเพลต</span>
+        </div>
+        <div class="ed-rail-item" id="ri1" onclick="switchPanel('elements',1);showTip(event,'องค์ประกอบ','กราฟิก รูปทรง เส้น ไอคอน สติกเกอร์ Mockup นับล้านชิ้น')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="4.5" cy="7" r="2"/><circle cx="19.5" cy="7" r="2"/><circle cx="4.5" cy="17" r="2"/><circle cx="19.5" cy="17" r="2"/></svg>
+          <span>องค์ประกอบ</span>
+        </div>
+        <div class="ed-rail-item" id="ri2" onclick="switchPanel('text',2);showTip(event,'ข้อความ','ฟอนต์กว่า 3,000 แบบ Text Effect เช่น เงา Glow Lift และ Retro')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          <span>ข้อความ</span>
+        </div>
+        <div class="ed-rail-item" id="ri3" onclick="switchPanel('photos',3);showTip(event,'รูปภาพ','ภาพสต็อกฟรีจาก Pexels/Pixabay นับล้าน พร้อม AI Background Remover')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span>รูปภาพ</span>
+        </div>
+        <div class="ed-rail-item" id="ri4" onclick="switchPanel('bg',4);showTip(event,'พื้นหลัง','สีพื้นหลัง Gradient ลาย Pattern รองรับ Blur Effect')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
+          <span>พื้นหลัง</span>
+        </div>
+        <div class="ed-rail-sep"></div>
+        <div class="ed-rail-item ed-rail-magic" onclick="showTip(event,'✨ Magic Studio — AI ครบชุด','Magic Media: เจนรูปจาก Text | Magic Eraser: ลบสิ่งของในรูป | Magic Edit: แก้ไขด้วย AI | Magic Resize: ปรับขนาดอัตโนมัติ')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" style="animation:pulse 2s infinite"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>
+          <span>Magic AI</span>
+        </div>
+      </div>
+      <div class="ed-panel">
+        <div class="ed-panel-head">
+          <div class="ed-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span id="panelSearchHint">ค้นหาเทมเพลต...</span></div>
+        </div>
+        <div class="ed-panel-section" id="panelSectionLabel">เทมเพลตแนะนำ</div>
+        <div class="ed-panel-body"><div class="tpl-grid" id="tplGrid"></div></div>
+      </div>
+      <div class="ed-page-strip" onclick="event.stopPropagation();showTip(event,'Page Strip','ดูหน้าทั้งหมด คลิกไปหน้านั้น ลากเรียงลำดับใหม่')">
+        <div class="ed-page-thumb on" style="background:white;"><div id="pg1inner" style="width:100%;height:100%;"></div></div>
+        <div class="ed-page-thumb" style="background:linear-gradient(135deg,#7c3aed,#06b6d4);"></div>
+        <div class="ed-page-thumb" style="background:linear-gradient(135deg,#ec4899,#f59e0b);"></div>
+        <div style="width:54px;height:28px;border:1.5px dashed #d1d5db;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#9ca3af;flex-shrink:0;" onclick="event.stopPropagation();showTip(event,'เพิ่มหน้าใหม่','คลิกเพื่อเพิ่มหน้าเปล่า')">+</div>
+      </div>
+      <div class="ed-canvas-area" onclick="showTip(event,'Workspace','Scroll ซูม, Space+Drag เลื่อน, คลิกเลือก, Double-click แก้ข้อความ')">
+        <div class="ed-ruler-h">
+          <div class="ed-ruler-mark" style="margin-right:38px;">0</div>
+          <div class="ed-ruler-mark" style="margin-right:76px;">50</div>
+          <div class="ed-ruler-mark" style="margin-right:76px;">100</div>
+          <div class="ed-ruler-mark" style="margin-right:76px;">150</div>
+          <div class="ed-ruler-mark">200</div>
+        </div>
+        <div class="ed-ruler-v"></div>
+        <div class="ed-page" id="mainPage">
+          <div id="mainPageContent" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#d1d5db;transition:opacity .4s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span style="font-size:10px;color:#9ca3af;font-weight:400;">เลือกเทมเพลต หรือเริ่มออกแบบเอง</span>
+          </div>
+          <div class="ed-page-selection"></div>
+        </div>
+        <div class="ed-page-indicator"><span>หน้า 1 / 3</span><div class="ed-page-sep"></div><span>A4</span></div>
+        <div class="ed-zoom-bar">
+          <div class="ed-zoom-btn">−</div>
+          <div class="ed-zoom-val">100%</div>
+          <div class="ed-zoom-btn">+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ════════ SLIDE 5: MODULE 02 ════════ -->
+<section class="slide" id="s5">
+  <div class="w-cap col center tc" style="position:relative;">
+    <div class="mod-num">02</div>
+    <div style="position:relative;z-index:1;" class="col center g3">
+      <div class="a1"><span class="badge b-pink">Module 02</span></div>
+      <h2 class="a2 h1">ขุมพลัง <span class="grad-main">AI Power</span></h2>
+      <p class="a3 body" style="max-width:min(460px,80vw);">เราจะใช้ AI เป็น "สมองส่วนเสริม" ในการสร้างสรรค์งานออกแบบให้ล้ำกว่าเดิม</p>
+      <div class="a4 two g3" style="max-width:min(480px,80vw);width:100%;">
+        <div class="glass p3 col center tc g2">
+          <div style="width:48px;height:48px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" width="24" height="24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div style="font-weight:700;font-size:clamp(.75rem,1vw,.92rem);">ChatGPT</div>
+          <div class="sm" style="color:var(--muted);">ปั้นพรอมต์มือโปร</div>
+          <span class="badge b-green">Step 1</span>
+        </div>
+        <div class="glass p3 col center tc g2">
+          <div style="width:48px;height:48px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div style="font-weight:700;font-size:clamp(.75rem,1vw,.92rem);">Google Gemini</div>
+          <div class="sm" style="color:var(--muted);">เจนรูปอัจฉริยะ</div>
+          <span class="badge b-blue">Step 2</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 6: WHAT IS PROMPT ════════ -->
+<section class="slide" id="s6">
+  <div class="w-cap col g3" style="height:calc(100vh - clamp(70px,10vh,100px));">
+    <div class="a1 tc" style="flex-shrink:0;">
+      <span class="badge b-purple mb2">ความรู้สำคัญ</span>
+      <h2 class="h1">Prompt <span class="grad-main">คืออะไร?</span></h2>
+      <p class="body mt1">"ศิลปะแห่งการสื่อสารให้ AI เข้าใจสิ่งที่เราต้องการ"</p>
+    </div>
+    <div class="a2 two g3" style="flex:1;min-height:0;">
+      <div class="glass p3 col g3" style="overflow:hidden;">
+        <span class="badge b-teal">ความหมาย</span>
+        <p style="font-size:clamp(.68rem,.9vw,.85rem);line-height:1.75;color:#e2e8f0;font-weight:300;">
+          <strong style="color:white;font-weight:700;">Prompt</strong> คือ คำสั่งที่เราพิมพ์สื่อสารกับ AI เปรียบเสมือนการ "บรีฟงาน" ให้ผู้ช่วยมืออาชีพ — ยิ่งบรีฟละเอียด ผลลัพธ์ยิ่งแม่นยำ
+        </p>
+        <div style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;">
+          <div style="font-size:9.5px;color:#f472b6;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;">ตัวอย่าง:</div>
+          <div style="font-size:clamp(.62rem,.82vw,.78rem);color:#cbd5e1;font-style:italic;line-height:1.65;font-weight:300;">"คุณคือนักออกแบบ AI Art ระดับโลก ช่วยร่างพรอมต์สำหรับ Gemini สร้างรูป มังกรดิจิทัลแสงนีออน สไตล์ Cyberpunk ความละเอียด 8K"</div>
+        </div>
+        <div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:9px;padding:10px 12px;font-size:clamp(.58rem,.76vw,.72rem);color:#c4b5fd;font-style:italic;text-align:center;line-height:1.6;">"ยิ่งพรอมต์ชัดเจนเท่าไหร่ ผลลัพธ์ยิ่งทรงพลังเท่านั้น"</div>
+      </div>
+      <div class="col g2">
+        <span class="badge b-teal a3">สูตรลับ P.T.C.</span>
+        <div class="a3 ptc-grid">
+          <div class="ptc ptc-teal" onclick="showTip(event,'P — Persona: กำหนดบทบาท','ระบุว่าให้ AI เป็นใคร เช่น นักออกแบบกราฟิกระดับโลก หรือ ช่างภาพมืออาชีพ — AI จะตอบตาม Persona')">
+            <div class="ptc-letter" style="color:#67e8f9;">P</div>
+            <div style="font-weight:700;font-size:clamp(.62rem,.84vw,.8rem);">Persona</div>
+            <div class="sm" style="color:var(--muted);margin-top:2px;">กำหนดบทบาท</div>
+          </div>
+          <div class="ptc ptc-purple" onclick="showTip(event,'T — Task: ระบุงาน','บอกชัดเจนว่าต้องการอะไร สร้างรูป / เขียน Caption / สรุป — ยิ่งละเอียดยิ่งดี')">
+            <div class="ptc-letter" style="color:#c4b5fd;">T</div>
+            <div style="font-weight:700;font-size:clamp(.62rem,.84vw,.8rem);">Task</div>
+            <div class="sm" style="color:var(--muted);margin-top:2px;">งานที่ต้องการ</div>
+          </div>
+          <div class="ptc ptc-pink" onclick="showTip(event,'C — Context: ข้อมูลเสริม','บอกสไตล์ โทนสี mood กลุ่มเป้าหมาย ขนาด — ทำให้ผลลัพธ์แตกต่างกันมากที่สุด')">
+            <div class="ptc-letter" style="color:#f9a8d4;">C</div>
+            <div style="font-weight:700;font-size:clamp(.62rem,.84vw,.8rem);">Context</div>
+            <div class="sm" style="color:var(--muted);margin-top:2px;">ข้อมูลเสริม</div>
+          </div>
+        </div>
+        <span class="click-hint a4" style="align-self:flex-start;"><span class="hint-dot"></span>คลิก P/T/C เพื่อดูรายละเอียด</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 7: AI WORKFLOW ════════ -->
+<section class="slide" id="s7">
+  <div class="w-cap col g4" style="width:100%;">
+    <div class="a1 tc">
+      <span class="badge b-teal mb2">Workflow</span>
+      <h2 class="h1">ขั้นตอนทำงานร่วมกับ <span class="grad-main">AI</span></h2>
+    </div>
+    <div class="a2 flow-grid">
+      <div class="flow-card gpt" onclick="goTo(7)">
+        <span class="badge b-green mb2">Step 1</span>
+        <div class="flow-icon" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <h3 class="h3 mt2">ChatGPT</h3>
+        <p class="sm mt1" style="color:var(--muted);">สร้างพรอมต์คุณภาพสูง</p>
+        <ul class="col g1 mt3" style="text-align:left;list-style:none;">
+          <li class="sm" style="color:#6ee7b7;">✓ ร่างพรอมต์ภาษาอังกฤษ</li>
+          <li class="sm" style="color:#6ee7b7;">✓ ปรับ Style รายละเอียด</li>
+          <li class="sm" style="color:#6ee7b7;">✓ Refine จนสูงสุด</li>
+        </ul>
+        <div class="sm mt3" style="color:#6ee7b7;font-weight:700;">คลิกดูจำลอง ChatGPT →</div>
+      </div>
+      <div class="flow-connector">
+        <div class="flow-vline"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+        <div style="font-size:8px;color:var(--muted);text-align:center;font-family:'Space Mono',monospace;line-height:1.4;">copy<br>prompt</div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+        <div class="flow-vline"></div>
+      </div>
+      <div class="flow-card gem" onclick="goTo(9)">
+        <span class="badge b-blue mb2">Step 2</span>
+        <div class="flow-icon" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <h3 class="h3 mt2">Google Gemini</h3>
+        <p class="sm mt1" style="color:var(--muted);">เนรมิตรูปภาพสวยงาม</p>
+        <ul class="col g1 mt3" style="text-align:left;list-style:none;">
+          <li class="sm" style="color:#93c5fd;">✓ วางพรอมต์จาก ChatGPT</li>
+          <li class="sm" style="color:#93c5fd;">✓ เจนรูปความละเอียดสูง</li>
+          <li class="sm" style="color:#93c5fd;">✓ โหลดไปใส่ Canva ได้เลย</li>
+        </ul>
+        <div class="sm mt3" style="color:#93c5fd;font-weight:700;">คลิกดูจำลอง Gemini →</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 8: CHATGPT DETAIL ════════ -->
+<section class="slide" id="s8">
+  <div class="w-cap col g3" style="style="height:calc(100vh - clamp(70px,10vh,100px));justify-content:center;">
+    <div class="a1 row g2" style="align-items:center;flex-shrink:0;">
+      <div style="width:42px;height:42px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" width="20" height="20"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div>
+        <span class="label" style="color:#6ee7b7;display:block;margin-bottom:2px;">Step 1</span>
+        <h2 class="h1">ChatGPT <span class="grad-green">Prompt Engine</span></h2>
+      </div>
+    </div>
+    <div class="a2 two g3" style="flex:1;min-height:0;align-items:start;">
+      <ul class="dl">
+        <li class="di"><div class="di-ico" style="background:rgba(16,185,129,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="di-t" style="color:#6ee7b7;">ใช้ GPT-4o ได้ฟรี</div><div class="di-d">บัญชีฟรีใช้รุ่นล่าสุดได้ แต่จำกัดจำนวนต่อวัน</div></div></li>
+        <li class="di"><div class="di-ico" style="background:rgba(245,158,11,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="di-t" style="color:#fcd34d;">ข้อจำกัดบัญชีฟรี</div><div class="di-d">ควรวางแผนใช้อย่างชาญฉลาด บันทึกพรอมต์ที่ดีไว้ใช้ซ้ำ</div></div></li>
+        <li class="di"><div class="di-ico" style="background:rgba(139,92,246,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div><div><div class="di-t" style="color:#c4b5fd;">จุดแข็ง: ร่างพรอมต์รูปภาพ</div><div class="di-d">ChatGPT เก่งสร้างพรอมต์ภาษาอังกฤษละเอียด เหมาะนำไปใช้กับ Gemini</div></div></li>
+      </ul>
+      <div class="glass p3 a3 col g3">
+        <span class="badge b-green">ตัวอย่างผลลัพธ์</span>
+        <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:12px;font-family:'Space Mono',monospace;font-size:clamp(9px,.8vw,11px);color:#6ee7b7;line-height:1.8;white-space:pre-wrap;"><span style="color:#6b7280;">You:</span> คุณคือนักออกแบบ AI Art ระดับโลก ร่างพรอมต์มังกรดิจิทัล
+
+<span style="color:#6b7280;">ChatGPT:</span> <span style="color:#34d399;">A majestic cybernetic dragon with glowing neon blue and purple scales, energy crackling between its claws, futuristic cyberpunk cityscape at night, ultra-detailed 8K, cinematic lighting</span></div>
+        <button onclick="goTo(9)" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:100px;padding:8px 20px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Kanit',sans-serif;transition:all .2s;box-shadow:0 4px 12px rgba(16,185,129,.28);" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">ดูการจำลอง ChatGPT →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 9: CHATGPT SIM ════════ -->
+<section class="slide" id="s9">
+  <div class="w-cap col g2" style="height:calc(100vh - clamp(70px,10vh,100px));">
+    <div class="a1 row g2" style="align-items:center;flex-shrink:0;">
+      <span class="badge b-green">จำลองการใช้งาน ChatGPT</span>
+      <span class="badge b-white">ภาพจำลอง (ไม่ใช่ API จริง)</span>
+    </div>
+    <div class="gpt-shell a2">
+      <div class="gpt-sidebar">
+        <div class="gpt-sb-logo"><div class="gpt-sb-logo-icon">G</div><span>ChatGPT</span></div>
+        <div class="gpt-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>แชทใหม่</div>
+        <div class="gpt-hist-label">วันนี้</div>
+        <div class="gpt-hist on">สร้างพรอมต์มังกรนีออน</div>
+        <div class="gpt-hist">ออกแบบโปสเตอร์คอนเสิร์ต</div>
+        <div class="gpt-hist">เขียน Caption Instagram</div>
+        <div class="gpt-hist-label mt2">เมื่อวาน</div>
+        <div class="gpt-hist">Branding สไตล์ Minimal</div>
+      </div>
+      <div class="gpt-main">
+        <div class="gpt-topbar">
+          <div class="gpt-model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>GPT-4o</div>
+        </div>
+        <div class="gpt-msgs" id="gptMsgs">
+          <div id="gptWelcome" style="display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:9px;">
+            <div style="width:42px;height:42px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;box-shadow:0 4px 12px rgba(16,185,129,.28);">G</div>
+            <p style="font-size:clamp(13px,1.5vw,16px);font-weight:700;color:white;">ฉันจะช่วยคุณได้อย่างไร?</p>
+          </div>
+        </div>
+        <div class="gpt-input-area">
+          <div class="gpt-input-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            <div class="gpt-input-txt" id="gptInputTxt">พิมพ์ข้อความที่นี่...</div>
+            <div class="gpt-send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+          </div>
+          <div class="gpt-disc">ChatGPT สามารถทำผิดพลาดได้ ควรตรวจสอบข้อมูลสำคัญเสมอ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 10: GEMINI DETAIL ════════ -->
+<section class="slide" id="s10">
+  <div class="w-cap col g3" style="height:calc(100vh - clamp(70px,10vh,100px));">
+    <div class="a1 row g2" style="astyle="height:calc(100vh - clamp(70px,10vh,100px));justify-content:center;">
+      <div style="width:42px;height:42px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="20" height="20"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <div>
+        <span class="label" style="color:#93c5fd;display:block;margin-bottom:2px;">Step 2</span>
+        <h2 class="h1">Google Gemini <span class="grad-blue">Image Artist</span></h2>
+      </div>
+    </div>
+    <div class="a2 two g3" style="flex:1;min-height:0;align-items:start;">
+      <ul class="dl">
+        <li class="di"><div class="di-ico" style="background:rgba(59,130,246,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div><div><div class="di-t" style="color:#93c5fd;">ดึงข้อมูลสดจาก Google Search</div><div class="di-d">Gemini เชื่อมต่อ Real-time ทำให้รูปมีความถูกต้องสูง</div></div></li>
+        <li class="di"><div class="di-ico" style="background:rgba(236,72,153,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="di-t" style="color:#f9a8d4;">จุดแข็ง: Photorealistic</div><div class="di-d">ใช้ Imagen 3 รุ่นล่าสุด สร้างรูปสมจริงคมชัดสูง ฟรี</div></div></li>
+        <li class="di"><div class="di-ico" style="background:rgba(245,158,11,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="di-t" style="color:#fcd34d;">Safety Filter อัตโนมัติ</div><div class="di-d">กรองเนื้อหาไม่เหมาะสม เหมาะกับองค์กรและสถานศึกษา</div></div></li>
+      </ul>
+      <div class="glass p3 a3 col g3">
+        <span class="badge b-blue">ตัวอย่างผลลัพธ์</span>
+        <div style="aspect-ratio:1;background:linear-gradient(135deg,#1e3a5f,#1e1b4b,#0f172a);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(59,130,246,.2);position:relative;overflow:hidden;">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(59,130,246,.12) 0%,transparent 65%);animation:pulse 3s infinite;"></div>
+          <div style="text-align:center;position:relative;z-index:1;padding:18px;">
+            <div style="font-size:clamp(2rem,4.5vw,3.5rem);margin-bottom:7px;">🐉</div>
+            <p style="font-size:clamp(9px,.8vw,11px);color:#93c5fd;font-weight:300;line-height:1.5;">Neon Digital Dragon<br><span style="opacity:.6;">Generated by Gemini Imagen 3</span></p>
+          </div>
+        </div>
+        <button onclick="goTo(11)" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;border-radius:100px;padding:8px 20px;font-weight:700;font-size:12px;cursor:pointer;font-family:'Kanit',sans-serif;transition:all .2s;box-shadow:0 4px 12px rgba(59,130,246,.28);" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">ดูการจำลอง Gemini →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 11: GEMINI SIM ════════ -->
+<section class="slide" id="s11">
+  <div class="w-cap col g2" style="height:calc(100vh - clamp(70px,10vh,100px));">
+    <div class="a1 row g2" style="align-items:center;flex-shrink:0;">
+      <span class="badge b-blue">จำลองการใช้งาน Google Gemini</span>
+      <span class="badge b-white">ภาพจำลอง (ไม่ใช่ API จริง)</span>
+    </div>
+    <div class="gem-shell a2">
+      <div class="gem-sidebar">
+        <div class="gem-sb-logo"><div class="gem-gem-icon"></div><span>Gemini</span></div>
+        <div class="gem-menu on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>แชทใหม่</div>
+        <div class="gem-menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>สร้างรูปภาพ</div>
+        <div class="gem-menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>ค้นหาจาก Google</div>
+        <div class="gpt-hist-label mt2" style="color:#4b5563;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:0 5px;">ล่าสุด</div>
+        <div class="gem-menu on">มังกรนีออน Workshop</div>
+        <div class="gem-menu">สร้างโลโก้ Minimal</div>
+      </div>
+      <div class="gem-main">
+        <div class="gem-topbar">
+          <div style="font-size:12px;font-weight:600;color:white;">Google Gemini</div>
+          <div class="gem-model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Gemini 1.5 Pro</div>
+        </div>
+        <div class="gem-msgs" id="gemMsgs">
+          <div id="gemWelcomeDiv" class="gem-welcome">
+            <div class="gem-welcome-icon"></div>
+            <h3>สวัสดี ฉันคือ Gemini</h3>
+            <p>วางพรอมต์จาก ChatGPT เพื่อสร้างรูปได้เลย</p>
+          </div>
+          <div id="gemImgBox" class="gem-img-result"></div>
+        </div>
+        <div class="gem-input-area">
+          <div class="gem-input-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" class="gem-spark"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg>
+            <div class="gpt-input-txt" id="gemInputTxt" style="font-family:'Kanit',sans-serif;">ใส่พรอมต์เพื่อสร้างรูปภาพ...</div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="#4285f4" stroke-width="2" width="14" height="14" style="flex-shrink:0;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="gem-disc">Gemini อาจแสดงข้อมูลไม่ถูกต้อง โปรดตรวจสอบเสมอ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 12: CHATGPT PRO/CON ════════ -->
+<section class="slide" id="s12">
+  <div class="w-cap col g3" style="style="height:calc(100vh - clamp(70px,10vh,100px));justify-content:center;">
+    <div class="a1 row g2" style="align-items:center;flex-shrink:0;">
+      <div style="width:40px;height:40px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" width="20" height="20"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div>
+        <h2 class="h1">ChatGPT — <span class="grad-green">ข้อดี & ข้อจำกัด</span></h2>
+      </div>
+    </div>
+    <div class="a2 two g3" style="flex:1;min-height:0;">
+      <!-- PROS -->
+      <div class="col g2">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <div style="width:24px;height:24px;background:rgba(16,185,129,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span style="font-weight:700;font-size:clamp(.7rem,.9vw,.85rem);color:#6ee7b7;">ข้อดี</span>
+        </div>
+        <ul class="dl">
+          <li class="di"><div class="di-ico" style="background:rgba(16,185,129,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"/></svg></div><div><div class="di-t" style="color:#6ee7b7;">เข้าใจภาษาไทยได้ดีมาก</div><div class="di-d">โต้ตอบ อธิบาย และสร้างเนื้อหาภาษาไทยได้คล่องแคล่ว เหมาะกับผู้เริ่มต้น</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(16,185,129,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="di-t" style="color:#6ee7b7;">ร่างข้อความ & พรอมต์เชี่ยวชาญ</div><div class="di-d">เขียน Caption โฆษณา บทนำเสนอ พรอมต์รูปภาพ ได้อย่างสร้างสรรค์และละเอียด</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(16,185,129,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div><div><div class="di-t" style="color:#6ee7b7;">ความจำ Context ยาวมาก</div><div class="di-d">รับจำบทสนทนายาวได้ ทำให้ขอให้ Refine งานได้หลายรอบในแชทเดียว</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(16,185,129,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><div><div class="di-t" style="color:#6ee7b7;">วิเคราะห์รูปได้ (GPT-4o)</div><div class="di-d">อัปโหลดรูปแล้วให้ AI อธิบาย แนะนำการปรับปรุง หรือสร้างพรอมต์จากรูปนั้นได้เลย</div></div></li>
+        </ul>
+      </div>
+      <!-- CONS + LIMITS -->
+      <div class="col g2">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <div style="width:24px;height:24px;background:rgba(239,68,68,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          <span style="font-weight:700;font-size:clamp(.7rem,.9vw,.85rem);color:#fca5a5;">ข้อเสีย & ข้อจำกัดบัญชีฟรี</span>
+        </div>
+        <ul class="dl">
+          <li class="di"><div class="di-ico" style="background:rgba(239,68,68,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="di-t" style="color:#fca5a5;">โควต้าต่อชั่วโมงจำกัด</div><div class="di-d">บัญชีฟรีใช้ GPT-4o ได้จำนวนหนึ่ง/ชั่วโมง เมื่อหมดจะสลับเป็น GPT-4o mini อัตโนมัติ</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(239,68,68,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><div><div class="di-t" style="color:#fca5a5;">ไม่มี Memory ถาวร (ฟรี)</div><div class="di-d">ปิดแชทแล้ว AI จำบทสนทนาเดิมไม่ได้ ต้องบรีฟใหม่ทุกครั้ง (Pro มี Memory)</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(239,68,68,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="di-t" style="color:#fca5a5;">สร้างรูปได้จำกัด (DALL·E)</div><div class="di-d">บัญชีฟรีสร้างรูปได้น้อย ถ้าต้องการสร้างรูปเยอะ แนะนำใช้ Gemini แทน</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(245,158,11,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="di-t" style="color:#fcd34d;">ข้อมูลหยุดที่ Cut-off date</div><div class="di-d">ความรู้มี cut-off date ถ้าถามเรื่องปัจจุบัน ต้อง Browse the web (Pro) หรือพิมพ์บอก</div></div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 13: GEMINI PRO/CON ════════ -->
+<section class="slide" id="s13">
+  <div class="w-cap col g3" style="style="height:calc(100vh - clamp(70px,10vh,100px));justify-content:center;">
+    <div class="a1 row g2" style="align-items:center;flex-shrink:0;">
+      <div style="width:40px;height:40px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <div style="width:22px;height:22px;border-radius:50%;background:conic-gradient(from 0deg,#4285f4,#ea4335,#fbbc05,#34a853,#4285f4);"></div>
+      </div>
+      <h2 class="h1">Gemini — <span class="grad-blue">ข้อดี & ข้อจำกัด</span></h2>
+    </div>
+    <div class="a2 two g3" style="flex:1;min-height:0;">
+      <!-- PROS -->
+      <div class="col g2">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <div style="width:24px;height:24px;background:rgba(59,130,246,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span style="font-weight:700;font-size:clamp(.7rem,.9vw,.85rem);color:#93c5fd;">ข้อดี</span>
+        </div>
+        <ul class="dl">
+          <li class="di"><div class="di-ico" style="background:rgba(59,130,246,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="di-t" style="color:#93c5fd;">สร้างรูปภาพฟรีไม่จำกัด</div><div class="di-d">Imagen 3 คุณภาพสูง สร้างได้ไม่จำกัดรอบต่อวัน สำหรับบัญชี Google ฟรีทุกคน</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(59,130,246,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div><div><div class="di-t" style="color:#93c5fd;">ค้นหา Google แบบ Real-time</div><div class="di-d">ข้อมูลสดจาก Google Search ตลอดเวลา ไม่มี cut-off เหมือน ChatGPT</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(59,130,246,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div><div class="di-t" style="color:#93c5fd;">เชื่อม Google Workspace ได้</div><div class="di-d">เชื่อมกับ Docs, Sheets, Gmail ได้โดยตรง ทำงานร่วมกับ Google Drive อัตโนมัติ</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(59,130,246,.15);"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="di-t" style="color:#93c5fd;">Safety Filter ระดับ Google</div><div class="di-d">กรองเนื้อหาไม่เหมาะสมอัตโนมัติ ปลอดภัยสำหรับสถานศึกษาและองค์กร</div></div></li>
+        </ul>
+      </div>
+      <!-- CONS -->
+      <div class="col g2">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <div style="width:24px;height:24px;background:rgba(239,68,68,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          <span style="font-weight:700;font-size:clamp(.7rem,.9vw,.85rem);color:#fca5a5;">ข้อเสีย & ข้อจำกัดบัญชีฟรี</span>
+        </div>
+        <ul class="dl">
+          <li class="di"><div class="di-ico" style="background:rgba(239,68,68,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="di-t" style="color:#fca5a5;">ภาษาไทยยังสู้ ChatGPT ไม่ได้</div><div class="di-d">เข้าใจภาษาไทยได้ แต่ความลื่นไหลและความสร้างสรรค์ในภาษาไทยยังด้อยกว่า GPT-4o</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(239,68,68,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div><div><div class="di-t" style="color:#fca5a5;">Safety Filter เข้มมาก</div><div class="di-d">บางครั้งปฏิเสธคำขอที่ไม่ได้ผิดปกติ เพราะ Filter เข้มกว่า ChatGPT</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(239,68,68,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><div><div class="di-t" style="color:#fca5a5;">Rate Limit ในชั่วโมงเร่งด่วน</div><div class="di-d">ช่วงที่ใช้งานหนาแน่น (กลางวัน) อาจรอคิว หรือได้รุ่นที่เบากว่าในบัญชีฟรี</div></div></li>
+          <li class="di"><div class="di-ico" style="background:rgba(245,158,11,.12);"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div><div class="di-t" style="color:#fcd34d;">Gem (Custom AI) จำกัด</div><div class="di-d">สร้าง Gem ส่วนตัว (AI ที่ตั้งค่าไว้ล่วงหน้า) ได้จำกัดในบัญชีฟรี ต้องอัปเป็น Advanced</div></div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 14: AI TRICKS ════════ -->
+<section class="slide" id="s14">
+  <div class="w-cap col g3" style="height:calc(100vh - clamp(70px,10vh,100px));">
+    <div class="a1 tc" style="flex-shrink:0;">
+      <span class="badge b-orange mb2">🔥 Pro Tips</span>
+      <h2 class="h1">ทริคสนิทกับ <span class="grad-orange">AI</span></h2>
+      <p class="body mt1">เทคนิคที่ทำให้คุณได้ผลลัพธ์ดีกว่าคนอื่น 10 เท่า</p>
+    </div>
+    <div class="a2" style="display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(8px,1.2vw,14px);flex:1;min-height:0;align-content:start;">
+      <!-- trick 1 -->
+      <div class="glass p3 col g2 glass-hover" style="cursor:default;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(245,158,11,.25),rgba(239,68,68,.2));border:1px solid rgba(245,158,11,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2" width="18" height="18"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.68rem,.88vw,.82rem);color:#fcd34d;">กำหนด Persona ก่อนเสมอ</div>
+        <div class="sm" style="color:var(--muted);line-height:1.65;">"คุณคือ..." ทุกครั้งที่เริ่มแชทใหม่ ทำให้ AI เข้าสู่ Mode ผู้เชี่ยวชาญทันที</div>
+        <div style="background:rgba(245,158,11,.08);border-radius:7px;padding:7px 10px;font-size:clamp(.55rem,.7vw,.66rem);color:#fbbf24;font-style:italic;">"คุณคือนักออกแบบโลโก้ระดับโลก..."</div>
+      </div>
+      <!-- trick 2 -->
+      <div class="glass p3 col g2 glass-hover" style="cursor:default;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(236,72,153,.2));border:1px solid rgba(124,58,237,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="2" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.68rem,.88vw,.82rem);color:#c4b5fd;">ขอให้ถามกลับก่อน</div>
+        <div class="sm" style="color:var(--muted);line-height:1.65;">ต่อท้ายคำขอว่า "ก่อนเริ่ม ถามฉัน 3 คำถาม" AI จะเข้าใจความต้องการลึกขึ้น</div>
+        <div style="background:rgba(124,58,237,.08);border-radius:7px;padding:7px 10px;font-size:clamp(.55rem,.7vw,.66rem);color:#c4b5fd;font-style:italic;">"...ก่อนเริ่ม ช่วยถามฉัน 3 ข้อ"</div>
+      </div>
+      <!-- trick 3 -->
+      <div class="glass p3 col g2 glass-hover" style="cursor:default;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(6,182,212,.25),rgba(59,130,246,.2));border:1px solid rgba(6,182,212,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2" width="18" height="18"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.68rem,.88vw,.82rem);color:#67e8f9;">บอก Format ที่ต้องการ</div>
+        <div class="sm" style="color:var(--muted);line-height:1.65;">ระบุว่าอยากได้ในรูปแบบไหน เช่น "ตอบเป็นข้อๆ" "ทำตารางให้" "ขอ 3 ตัวเลือก"</div>
+        <div style="background:rgba(6,182,212,.08);border-radius:7px;padding:7px 10px;font-size:clamp(.55rem,.7vw,.66rem);color:#67e8f9;font-style:italic;">"ตอบเป็น bullet point 5 ข้อ"</div>
+      </div>
+      <!-- trick 4 -->
+      <div class="glass p3 col g2 glass-hover" style="cursor:default;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(16,185,129,.25),rgba(6,182,212,.2));border:1px solid rgba(16,185,129,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.68rem,.88vw,.82rem);color:#6ee7b7;">Iterate — ขอ Version 2</div>
+        <div class="sm" style="color:var(--muted);line-height:1.65;">อย่าพอใจแค่ครั้งแรก พิมพ์ "ดีมาก แต่ขอให้ ... มากขึ้น" AI จะ Refine ให้ทันที</div>
+        <div style="background:rgba(16,185,129,.08);border-radius:7px;padding:7px 10px;font-size:clamp(.55rem,.7vw,.66rem);color:#6ee7b7;font-style:italic;">"ดีมาก ขอให้สนุกขึ้น 2 เท่า"</div>
+      </div>
+      <!-- trick 5 -->
+      <div class="glass p3 col g2 glass-hover" style="cursor:default;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(236,72,153,.25),rgba(245,158,11,.2));border:1px solid rgba(236,72,153,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f9a8d4" stroke-width="2" width="18" height="18"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.68rem,.88vw,.82rem);color:#f9a8d4;">ให้ตัวอย่างที่ชอบ</div>
+        <div class="sm" style="color:var(--muted);line-height:1.65;">แนบตัวอย่างงานที่ชอบ บอกแบรนด์หรือสไตล์อ้างอิง AI จะจับ Vibe ได้แม่นยำกว่า</div>
+        <div style="background:rgba(236,72,153,.08);border-radius:7px;padding:7px 10px;font-size:clamp(.55rem,.7vw,.66rem);color:#f9a8d4;font-style:italic;">"สไตล์เหมือน Nike, Tone มืดๆ"</div>
+      </div>
+      <!-- trick 6 -->
+      <div class="glass p3 col g2 glass-hover" style="cursor:default;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(59,130,246,.25),rgba(139,92,246,.2));border:1px solid rgba(59,130,246,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.68rem,.88vw,.82rem);color:#93c5fd;">บันทึก Prompt ที่ดีไว้</div>
+        <div class="sm" style="color:var(--muted);line-height:1.65;">เมื่อได้พรอมต์ที่งานออกมาดี บันทึกไว้ใน Note แล้วนำมา Remix กับงานชิ้นใหม่ได้เสมอ</div>
+        <div style="background:rgba(59,130,246,.08);border-radius:7px;padding:7px 10px;font-size:clamp(.55rem,.7vw,.66rem);color:#93c5fd;font-style:italic;">สร้าง "คลัง Prompt" ส่วนตัว ✓</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 15: OTHER AI TOOLS ════════ -->
+<section class="slide" id="s15">
+  <div class="w-cap col g3" style="height:calc(100vh - clamp(70px,10vh,100px));">
+    <div class="a1 tc" style="flex-shrink:0;">
+      <span class="badge b-purple mb2">🌍 AI Ecosystem</span>
+      <h2 class="h1">AI อีกหลายตัว<br>ที่<span class="grad-main">ทำแบบนี้ได้</span></h2>
+      <p class="body mt1">โลก AI ไม่ได้มีแค่สองตัว — แต่สำหรับน้องๆ ที่เริ่มต้น...</p>
+    </div>
+    <div class="a2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(7px,1vw,12px);flex:1;min-height:0;align-content:start;">
+      <!-- Midjourney -->
+      <div class="glass p2 col center tc g2 glass-hover" style="cursor:default;opacity:.75;">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+          <span style="font-size:20px;">🎨</span>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.65rem,.85vw,.8rem);">Midjourney</div>
+        <span class="badge b-pink" style="font-size:clamp(.45rem,.6vw,.56rem);">รูปภาพ</span>
+        <div class="sm" style="color:var(--muted);line-height:1.5;">คุณภาพสูงมาก เหมาะงาน Art เชิงพาณิชย์ <strong style="color:#f9a8d4;">แต่ต้องจ่ายตั้งแต่วันแรก</strong></div>
+      </div>
+      <!-- Adobe Firefly -->
+      <div class="glass p2 col center tc g2 glass-hover" style="cursor:default;opacity:.75;">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#ff3d00,#ff6d00);border:1px solid rgba(255,109,0,.4);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+          <span style="font-size:20px;">🔥</span>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.65rem,.85vw,.8rem);">Adobe Firefly</div>
+        <span class="badge b-orange" style="font-size:clamp(.45rem,.6vw,.56rem);">รูปภาพ</span>
+        <div class="sm" style="color:var(--muted);line-height:1.5;">เชื่อมกับ Photoshop ได้ดีมาก <strong style="color:#fcd34d;">ฟรีจำกัด</strong> ต้อง CC Plan</div>
+      </div>
+      <!-- Claude -->
+      <div class="glass p2 col center tc g2 glass-hover" style="cursor:default;opacity:.75;">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#d97706,#f59e0b);border:1px solid rgba(245,158,11,.4);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+          <span style="font-size:20px;">🤖</span>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.65rem,.85vw,.8rem);">Claude (Anthropic)</div>
+        <span class="badge b-orange" style="font-size:clamp(.45rem,.6vw,.56rem);">ข้อความ</span>
+        <div class="sm" style="color:var(--muted);line-height:1.5;">เก่งเรื่องวิเคราะห์ เขียนยาว Context ยาวมาก <strong style="color:#fcd34d;">ฟรีจำกัด</strong></div>
+      </div>
+      <!-- Stable Diffusion -->
+      <div class="glass p2 col center tc g2 glass-hover" style="cursor:default;opacity:.75;">
+        <div style="width:44px;height:44px;background:linear-gradient(135deg,#1e40af,#3b82f6);border:1px solid rgba(59,130,246,.4);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+          <span style="font-size:20px;">⚡</span>
+        </div>
+        <div style="font-weight:700;font-size:clamp(.65rem,.85vw,.8rem);">Stable Diffusion</div>
+        <span class="badge b-blue" style="font-size:clamp(.45rem,.6vw,.56rem);">รูปภาพ</span>
+        <div class="sm" style="color:var(--muted);line-height:1.5;">Open Source ฟรีทั้งหมด แต่ต้องใช้เครื่องแรง หรือ Web UI</div>
+      </div>
+    </div>
+    <!-- recommendation box -->
+    <div class="a3 glass p3" style="flex-shrink:0;background:linear-gradient(135deg,rgba(6,182,212,.08),rgba(124,58,237,.08));border:1.5px solid rgba(6,182,212,.3);">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(6,182,212,.3),rgba(124,58,237,.3));border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2" width="18" height="18"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div>
+          <div style="font-weight:800;font-size:clamp(.72rem,.95vw,.9rem);color:#e0f7ff;margin-bottom:4px;">💡 คำแนะนำจากพี่ (สำหรับบัญชีฟรี)</div>
+          <div style="font-size:clamp(.62rem,.82vw,.78rem);color:#bfdbfe;line-height:1.75;font-weight:300;">
+            AI เจ้าอื่นก็ทำได้ดี — <strong style="color:white;">แต่สำหรับน้องๆ ที่เพิ่งเริ่มและมีบัญชีฟรี</strong> ขอแนะนำ <strong style="color:#67e8f9;">ChatGPT</strong> (เขียนพรอมต์+เนื้อหา) คู่กับ <strong style="color:#93c5fd;">Gemini</strong> (สร้างรูปภาพ) เพราะ <strong style="color:#fcd34d;">ฟรีได้เต็มๆ</strong> ไม่มีลายน้ำ ใช้ง่าย และเชื่อมกับ Canva ได้โดยตรง — เมื่อเริ่มชำนาญแล้วค่อยลองตัวอื่นๆ ตามความต้องการ 🚀
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 16: OUTRO ════════ -->
+<section class="slide" id="s16">
+  <div class="w-cap col center tc" style="position:relative;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+      <div class="outro-ring" style="width:min(650px,88vw);height:min(650px,88vw);border-color:rgba(6,182,212,.1);animation-delay:0s;"></div>
+      <div class="outro-ring" style="width:min(460px,62vw);height:min(460px,62vw);border-color:rgba(124,58,237,.15);animation-delay:1.7s;"></div>
+      <div class="outro-ring" style="width:min(280px,38vw);height:min(280px,38vw);border-color:rgba(236,72,153,.22);animation-delay:3.4s;"></div>
+    </div>
+    <div class="a1 mb2"><span class="badge b-teal">🎉 Workshop สรุป</span></div>
+    <h2 class="a2 disp">Ready to<br><span class="shimmer-text">Innovate?</span></h2>
+    <p class="a3 body mt3" style="max-width:min(520px,78vw);">คุณได้เรียนรู้ครบแล้ว — Canva + ChatGPT + Gemini<br>เอาไปสร้างงานได้เลยตั้งแต่วันนี้ 💪</p>
+    <div class="a4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(7px,1vw,12px);margin-top:clamp(14px,2vw,22px);max-width:min(640px,90vw);width:100%;">
+      <div class="glass p2 tc glow-border" style="border-color:rgba(6,182,212,.4);">
+        <div style="font-size:clamp(1.3rem,2.5vw,2rem);margin-bottom:4px;">🎨</div>
+        <div style="font-weight:700;font-size:clamp(.58rem,.76vw,.72rem);">Canva</div>
+        <div class="sm" style="color:var(--muted);">ออกแบบ</div>
+      </div>
+      <div class="glass p2 tc glow-border" style="border-color:rgba(16,185,129,.4);">
+        <div style="font-size:clamp(1.3rem,2.5vw,2rem);margin-bottom:4px;">⚡</div>
+        <div style="font-weight:700;font-size:clamp(.58rem,.76vw,.72rem);">ChatGPT</div>
+        <div class="sm" style="color:var(--muted);">พรอมต์</div>
+      </div>
+      <div class="glass p2 tc glow-border" style="border-color:rgba(59,130,246,.4);">
+        <div style="font-size:clamp(1.3rem,2.5vw,2rem);margin-bottom:4px;">🖼️</div>
+        <div style="font-weight:700;font-size:clamp(.58rem,.76vw,.72rem);">Gemini</div>
+        <div class="sm" style="color:var(--muted);">รูปภาพ</div>
+      </div>
+      <div class="glass p2 tc glow-border" style="border-color:rgba(236,72,153,.4);">
+        <div style="font-size:clamp(1.3rem,2.5vw,2rem);margin-bottom:4px;">🚀</div>
+        <div style="font-weight:700;font-size:clamp(.58rem,.76vw,.72rem);">คุณ!</div>
+        <div class="sm" style="color:var(--muted);">สร้างสรรค์</div>
+      </div>
+    </div>
+    <div class="a5 row center g3 mt4" style="flex-wrap:wrap;">
+      <button onclick="goTo(0)" style="background:linear-gradient(135deg,#06b6d4,#7c3aed);color:white;border:none;border-radius:100px;padding:clamp(9px,1.3vw,13px) clamp(22px,3.2vw,38px);font-weight:800;font-size:clamp(.75rem,1.1vw,.95rem);cursor:pointer;font-family:'Kanit',sans-serif;transition:all .3s;box-shadow:0 8px 26px rgba(6,182,212,.3);" onmouseover="this.style.transform='scale(1.06) translateY(-3px)'" onmouseout="this.style.transform='scale(1)'">🔄 เริ่มต้นใหม่</button>
+      <button onclick="goTo(14)" style="background:transparent;color:white;border:2px solid rgba(255,255,255,.2);border-radius:100px;padding:clamp(9px,1.3vw,13px) clamp(22px,3.2vw,38px);font-weight:700;font-size:clamp(.75rem,1.1vw,.95rem);cursor:pointer;font-family:'Kanit',sans-serif;transition:all .3s;" onmouseover="this.style.borderColor='rgba(245,158,11,.6)';this.style.color='#fcd34d'" onmouseout="this.style.borderColor='rgba(255,255,255,.2)';this.style.color='white'">💡 ดูทริค AI</button>
+    </div>
+  </div>
+</section>
+
+</div><!-- /stage -->
+
+<!-- NAV -->
+<div id="nav">
+  <div class="nav-btn" id="prevBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></div>
+  <div class="dots" id="dots"></div>
+  <div class="ctr" id="ctr">01/12</div>
+  <div class="nav-btn" id="nextBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+</div>
+<div class="kb-hint"><span class="kb">← →</span><span class="kb">Space</span></div>
+<div id="tip">
+  <div class="tip-in">
+    <div class="tip-header">
+      <div class="tip-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#67e8f9" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="tip-title" id="ttT"></div>
+    </div>
+    <div class="tip-divider"></div>
+    <div class="tip-desc" id="ttD"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════
+// PARTICLES
+// ══════════════════════════════════
+(function(){
+  const c=document.getElementById('pts');
+  const cols=['#7c3aed','#06b6d4','#ec4899','white','#f59e0b'];
+  for(let i=0;i<55;i++){
+    const p=document.createElement('div');
+    p.className='pt';
+    const size=1+Math.random()*2.5;
+    p.style.cssText=`left:${Math.random()*100}vw;width:${size}px;height:${size}px;background:${cols[i%cols.length]};animation-duration:${12+Math.random()*20}s;animation-delay:${Math.random()*28}s;`;
+    c.appendChild(p);
+  }
+})();
+
+// ══════════════════════════════════
+// CANVA MOSAIC
+// ══════════════════════════════════
+(function(){
+  const g=document.getElementById('cvMosaic');
+  if(!g) return;
+  const configs=[
+    {bg:'#7c3aed'},{bg:'#f97316'},{bg:'#0891b2'},{bg:'#15803d'},
+    {bg:'#dc2626'},{bg:'#2563eb'},{bg:'#7c3aed'},{bg:'#0f172a'},
+    {bg:'#ea580c'},{bg:'#059669'},{bg:'#1d4ed8'},{bg:'#374151'},
+    {bg:'#7c3aed'},{bg:'#b45309'},{bg:'#0891b2'},{bg:'#1f2937'},
+    {bg:'#9333ea'},{bg:'#d97706'},{bg:'#1d4ed8'},{bg:'#065f46'},
+  ];
+  configs.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='cv-card';
+    d.style.cssText=`background:${c.bg};animation-duration:${4+Math.random()*4}s;animation-delay:${Math.random()*4}s;`;
+    d.innerHTML=`<div class="cv-card-inner">
+      <div class="cv-card-line" style="width:78%;height:2px;background:rgba(255,255,255,.8);"></div>
+      <div class="cv-card-line" style="width:${55+Math.random()*25}%;height:2px;background:rgba(255,255,255,.4);margin-top:2px;"></div>
+      <div style="width:70%;height:${10+Math.random()*8}px;background:rgba(255,255,255,.1);border-radius:3px;margin-top:4px;"></div>
+    </div>`;
+    g.appendChild(d);
+  });
+})();
+
+// ══════════════════════════════════
+// EDITOR PANEL
+// ══════════════════════════════════
+const panelConfigs={
+  design:{label:'เทมเพลตแนะนำ',hint:'ค้นหาเทมเพลต...',
+    cards:[
+      {bg:'linear-gradient(135deg,#7c3aed,#06b6d4)',lines:['rgba(255,255,255,.8)','rgba(255,255,255,.4)','rgba(255,255,255,.15)']},
+      {bg:'linear-gradient(135deg,#ec4899,#f59e0b)',lines:['rgba(255,255,255,.8)','rgba(255,255,255,.4)','rgba(255,255,255,.15)']},
+      {bg:'linear-gradient(135deg,#059669,#3b82f6)',lines:['rgba(255,255,255,.8)','rgba(255,255,255,.4)','rgba(255,255,255,.15)']},
+      {bg:'linear-gradient(135deg,#dc2626,#7c3aed)',lines:['rgba(255,255,255,.8)','rgba(255,255,255,.4)','rgba(255,255,255,.15)']},
+      {bg:'linear-gradient(135deg,#0f172a,#1e3a5f)',lines:['rgba(255,255,255,.7)','rgba(255,255,255,.3)','rgba(255,255,255,.1)']},
+      {bg:'linear-gradient(135deg,#92400e,#d97706)',lines:['rgba(255,255,255,.8)','rgba(255,255,255,.4)','rgba(255,255,255,.15)']},
+      {bg:'linear-gradient(135deg,#065f46,#10b981)',lines:['rgba(255,255,255,.8)','rgba(255,255,255,.4)','rgba(255,255,255,.15)']},
+      {bg:'linear-gradient(135deg,#1e40af,#7c3aed)',lines:['rgba(255,255,255,.8)','rgba(255,255,255,.4)','rgba(255,255,255,.15)']},
+    ]
+  },
+  elements:{label:'องค์ประกอบยอดนิยม',hint:'ค้นหาองค์ประกอบ...',emojis:['⭐','💎','🔶','❤️','🎯','🌟','🔷','💫']},
+  text:{label:'สไตล์ฟอนต์',hint:'ค้นหาสไตล์...',styles:[
+    {t:'Headline',c:'#111',bg:'#f9fafb',fw:800},{t:'Subheading',c:'#374151',bg:'#f3f4f6',fw:700},
+    {t:'Body',c:'#6b7280',bg:'#fff',fw:400},{t:'Bold',c:'#7c3aed',bg:'#f5f3ff',fw:800},
+    {t:'Script',c:'#0891b2',bg:'#ecfeff',fw:600,it:true},{t:'Display',c:'#dc2626',bg:'#fef2f2',fw:900},
+    {t:'Minimal',c:'#374151',bg:'#f8fafc',fw:300},{t:'Modern',c:'#1f2937',bg:'#f1f5f9',fw:700},
+  ]},
+  photos:{label:'ภาพสต็อกฟรี',hint:'ค้นหารูปภาพ...',
+    colors:['#dbeafe','#dcfce7','#fce7f3','#fef3c7','#ede9fe','#e0f2fe','#f0fdf4','#fdf2f8'],
+    emojis:['🌄','🌆','🌿','🎨','🏙️','🌊','🌸','✨']
+  },
+  bg:{label:'พื้นหลัง',hint:'ค้นหาพื้นหลัง...',
+    cards:[
+      {bg:'linear-gradient(135deg,#667eea,#764ba2)'},{bg:'linear-gradient(135deg,#f093fb,#f5576c)'},
+      {bg:'linear-gradient(135deg,#4facfe,#00f2fe)'},{bg:'linear-gradient(135deg,#43e97b,#38f9d7)'},
+      {bg:'linear-gradient(135deg,#fa709a,#fee140)'},{bg:'linear-gradient(135deg,#30cfd0,#330867)'},
+      {bg:'linear-gradient(135deg,#a18cd1,#fbc2eb)'},{bg:'#0f172a'},
+    ]
+  }
+};
+
+function switchPanel(type,idx){
+  document.querySelectorAll('.ed-rail-item').forEach((el,i)=>el.classList.toggle('on',i===idx));
+  const cfg=panelConfigs[type]||panelConfigs.design;
+  document.getElementById('panelSectionLabel').textContent=cfg.label;
+  document.getElementById('panelSearchHint').textContent=cfg.hint;
+  const grid=document.getElementById('tplGrid');
+  grid.innerHTML='';
+  for(let i=0;i<8;i++){
+    const d=document.createElement('div');
+    d.className='tpl-card';
+    if(type==='design'||type==='bg'){
+      const c=cfg.cards[i];
+      d.style.background=c.bg;
+      if(type==='design'){
+        d.innerHTML=`<div class="tpl-card-inner">
+          <div class="tpl-card-line" style="width:76%;height:2px;background:${c.lines[0]};"></div>
+          <div class="tpl-card-line" style="width:52%;height:2px;background:${c.lines[1]};margin-top:2px;"></div>
+          <div style="width:62%;height:14px;background:${c.lines[2]};border-radius:3px;margin-top:4px;"></div>
+        </div>
+        <div class="tpl-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg></div>`;
+        d.onclick=(e)=>{
+          e.stopPropagation();
+          document.getElementById('mainPage').style.background=c.bg;
+          document.getElementById('mainPageContent').style.opacity='0';
+          const pg1=document.getElementById('pg1inner');
+          if(pg1) pg1.style.background=c.bg;
+          showTip(e,'✓ เทมเพลตถูกใช้งานแล้ว!','ดีไซน์ถูกใส่ใน Canvas แล้ว คลิกองค์ประกอบเพื่อแก้ไขได้ทันที');
+        };
+      } else {
+        d.innerHTML=`<div class="tpl-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg></div>`;
+        d.onclick=(e)=>{e.stopPropagation();document.getElementById('mainPage').style.background=c.bg;document.getElementById('mainPageContent').style.opacity='0';showTip(e,'พื้นหลังถูกใช้งาน','สีพื้นหลังใหม่ถูกนำไปใช้แล้ว');};
+      }
+    } else if(type==='text'){
+      const s=cfg.styles[i];
+      d.style.cssText=`background:${s.bg};border:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:center;padding:5px;`;
+      d.innerHTML=`<span style="color:${s.c};font-weight:${s.fw};font-size:10px;text-align:center;${s.it?'font-style:italic;':''}">${s.t}</span>`;
+    } else {
+      const cc=cfg.colors?cfg.colors[i]:'#f9fafb';
+      d.style.cssText=`background:${cc};display:flex;align-items:center;justify-content:center;font-size:20px;border:1.5px solid rgba(0,0,0,.06);`;
+      d.textContent=cfg.emojis[i];
+    }
+    grid.appendChild(d);
+  }
+}
+switchPanel('design',0);
+
+// ══════════════════════════════════
+// ★ FIXED SLIDE NAVIGATION ★
+// No overlap: uses a proper state machine
+// with cleanup after transition ends.
+// ══════════════════════════════════
+const TOTAL = 17;
+let cur = 0;
+let isTransitioning = false;
+
+const dotsEl  = document.getElementById('dots');
+const ctrEl   = document.getElementById('ctr');
+const progBar = document.getElementById('progress-bar');
+const allDots = [];
+
+// Build dots
+for(let i = 0; i < TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+  allDots.push(d);
+}
+
+function updateNav(idx){
+  allDots.forEach((d,i) => d.className = 'dot' + (i===idx?' on':''));
+  const ctr = document.getElementById('ctr');
+  ctr.textContent = String(idx+1).padStart(2,'0') + '/' + String(TOTAL).padStart(2,'0');
+  // flash counter
+  ctr.classList.remove('flash');
+  void ctr.offsetWidth; // reflow
+  ctr.classList.add('flash');
+  // progress bar
+  progBar.style.width = ((idx / (TOTAL-1)) * 100) + '%';
+}
+
+function goTo(idx){
+  if(idx < 0 || idx >= TOTAL || idx === cur || isTransitioning) return;
+  isTransitioning = true;
+
+  const slides = document.querySelectorAll('.slide');
+  const prevIdx = cur;
+  cur = idx;
+
+  // Flash overlay
+  const flash = document.getElementById('trans-flash');
+  flash.classList.remove('flash');
+  void flash.offsetWidth;
+  flash.classList.add('flash');
+
+  // Mark leaving slide
+  slides[prevIdx].classList.remove('active');
+  slides[prevIdx].classList.add('leaving');
+
+  // Activate new slide (starts entering animation)
+  slides[cur].classList.add('active');
+
+  updateNav(cur);
+
+  // Hide tooltip
+  document.getElementById('tip').style.display = 'none';
+
+  // Trigger sims
+  if(cur === 9) setTimeout(runGPT, 700);
+  if(cur === 11) setTimeout(runGemini, 700);
+
+  // After transition, clean up leaving slide
+  const DURATION = 600; // ms — slightly more than CSS transition
+  setTimeout(() => {
+    slides[prevIdx].classList.remove('leaving');
+    // Reset any stored animation state so it re-runs on next visit
+    isTransitioning = false;
+  }, DURATION);
+}
+
+// Init: show first slide
+(function(){
+  const slides = document.querySelectorAll('.slide');
+  slides[0].classList.add('active');
+  updateNav(0);
+})();
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if(e.key === 'ArrowRight' || e.key === ' '){ e.preventDefault(); goTo(cur+1); }
+  else if(e.key === 'ArrowLeft'){ e.preventDefault(); goTo(cur-1); }
+  else if(e.key === 'ArrowUp'){ e.preventDefault(); goTo(0); }
+  else if(e.key === 'End'){ e.preventDefault(); goTo(TOTAL-1); }
+});
+
+// Nav buttons
+document.getElementById('prevBtn').onclick = () => goTo(cur-1);
+document.getElementById('nextBtn').onclick = () => goTo(cur+1);
+
+// Touch swipe
+let touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', e => {
+  touchStartX = e.changedTouches[0].clientX;
+  touchStartY = e.changedTouches[0].clientY;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = touchStartX - e.changedTouches[0].clientX;
+  const dy = Math.abs(touchStartY - e.changedTouches[0].clientY);
+  if(Math.abs(dx) > 55 && dy < 80){
+    dx > 0 ? goTo(cur+1) : goTo(cur-1);
+  }
+});
+
+// ══════════════════════════════════
+// TOOLTIP
+// ══════════════════════════════════
+let tipTimer;
+function showTip(e, title, desc){
+  e.stopPropagation();
+  clearTimeout(tipTimer);
+  const t = document.getElementById('tip');
+  document.getElementById('ttT').textContent = title;
+  document.getElementById('ttD').textContent = desc;
+  // Reset animation
+  t.classList.remove('visible');
+  t.style.display = 'none';
+  void t.offsetWidth; // reflow
+  t.style.display = 'block';
+  t.classList.add('visible');
+
+  const W=300, H=130;
+  let x = e.clientX + 16, y = e.clientY + 16;
+  if(x + W > window.innerWidth - 10) x = e.clientX - W - 12;
+  if(y + H > window.innerHeight - 10) y = e.clientY - H - 12;
+  t.style.left = x + 'px';
+  t.style.top  = y + 'px';
+  tipTimer = setTimeout(() => { t.classList.remove('visible'); setTimeout(()=>t.style.display='none',100); }, 5500);
+}
+document.addEventListener('click', () => { const t=document.getElementById('tip'); t.classList.remove('visible'); setTimeout(()=>t.style.display='none',100); });
+
+// ══════════════════════════════════
+// GPT SIMULATION
+// ══════════════════════════════════
+let gptDone = false;
+function runGPT(){
+  if(gptDone) return; gptDone = true;
+  const input   = document.getElementById('gptInputTxt');
+  const msgs    = document.getElementById('gptMsgs');
+  const welcome = document.getElementById('gptWelcome');
+  const prompt  = 'คุณคือนักออกแบบ AI Art ระดับโลก ช่วยร่างพรอมต์สร้างรูป "มังกรดิจิทัลแสงนีออน" สำหรับ Gemini ให้คุณภาพสูงสุด';
+  let i = 0;
+  const t = setInterval(() => {
+    if(!input){ clearInterval(t); return; }
+    input.textContent = prompt.substring(0, i) + (i < prompt.length ? '|' : '');
+    i++;
+    if(i > prompt.length){
+      clearInterval(t);
+      input.textContent = '';
+      if(welcome) welcome.style.display = 'none';
+      addMsg(msgs, 'user', prompt);
+      setTimeout(() => {
+        addMsg(msgs, 'ai',
+          `ยินดีช่วยครับ! 🎨\n\n"A majestic cybernetic dragon with glowing neon blue and purple scales, energy crackling between its claws, set against a futuristic cyberpunk cityscape at night, ultra-detailed 8K, cinematic lighting, art by Greg Rutkowski"\n\n💡 ระบุ Art Style ทำให้รูปออกมาสมบูรณ์แบบขึ้นมาก!`, 'gpt');
+      }, 800);
+    }
+  }, 32);
+}
+
+// ══════════════════════════════════
+// GEMINI SIMULATION
+// ══════════════════════════════════
+let gemDone = false;
+function runGemini(){
+  if(gemDone) return; gemDone = true;
+  const input   = document.getElementById('gemInputTxt');
+  const msgs    = document.getElementById('gemMsgs');
+  const welcome = document.getElementById('gemWelcomeDiv');
+  const imgBox  = document.getElementById('gemImgBox');
+  const prompt  = 'A majestic cybernetic dragon glowing neon blue scales, cyberpunk cityscape, 8K, by Greg Rutkowski';
+  let i = 0;
+  const t = setInterval(() => {
+    if(!input){ clearInterval(t); return; }
+    input.textContent = prompt.substring(0, i) + (i < prompt.length ? '|' : '');
+    i++;
+    if(i > prompt.length){
+      clearInterval(t);
+      input.textContent = '';
+      if(welcome) welcome.style.display = 'none';
+      addMsg(msgs, 'user', prompt);
+      setTimeout(() => {
+        addMsg(msgs, 'ai', 'กำลังสร้างรูปภาพ...\n⬡ Analyzing prompt\n⬡ Generating composition\n⬡ Applying neon effects\n⬡ Rendering (Imagen 3)...', 'gem');
+        setTimeout(() => {
+          if(imgBox){
+            imgBox.style.backgroundImage = "url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80')";
+            imgBox.classList.add('show');
+            msgs.appendChild(imgBox);
+          }
+          setTimeout(() => {
+            addMsg(msgs, 'ai', '✅ สร้างสำเร็จ!\n💾 คลิกขวาบันทึก\n🎨 นำไปใส่ Canva ได้เลย', 'gem');
+          }, 600);
+        }, 2200);
+      }, 900);
+    }
+  }, 28);
+}
+
+function addMsg(container, role, text, type){
+  if(!container) return;
+  const div = document.createElement('div');
+  if(role === 'user'){
+    div.className = 'msg-u';
+    div.textContent = text;
+  } else {
+    div.className = 'msg-a';
+    const av  = document.createElement('div');
+    av.className = type==='gem' ? 'gem-av' : 'msg-a-av';
+    av.textContent = type==='gem' ? 'G' : 'AI';
+    const tx  = document.createElement('div');
+    tx.className = 'msg-a-txt';
+    div.appendChild(av);
+    div.appendChild(tx);
+    container.appendChild(div);
+    let j = 0;
+    const tt = setInterval(() => {
+      tx.textContent = text.substring(0, j); j++;
+      container.scrollTop = container.scrollHeight;
+      if(j > text.length) clearInterval(tt);
+    }, 16);
+    return;
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+</script>
+</body>
+</html>
